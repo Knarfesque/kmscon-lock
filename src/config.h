@@ -36,6 +36,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "conf.h"
+#include "render/text.h"
 
 enum kmscon_conf_gpu_selection {
 	KMSCON_GPU_ALL,
@@ -52,6 +53,13 @@ struct kmscon_conf_mode {
 	uint32_t width;
 	uint32_t height;
 	uint32_t refresh_rate;
+};
+
+struct kmscon_conf_screen {
+	char gpu[MAX_DISPLAY_NAME_LEN];
+	char connector[MAX_DISPLAY_NAME_LEN];
+	bool enabled;
+	enum Orientation orientation;
 };
 
 struct kmscon_conf_t {
@@ -184,8 +192,9 @@ struct kmscon_conf_t {
 	struct kmscon_conf_mode *modes;
 	/* multiple monitors */
 	char *multi_monitor;
-	/* orientation/rotation of output */
-	char *rotate;
+	/* screen configuration */
+	unsigned int screen_count;
+	struct kmscon_conf_screen *screens;
 
 	/* Font Options */
 	/* font engine */
@@ -209,5 +218,7 @@ int kmscon_conf_load_seat(struct conf_ctx *ctx, const struct conf_ctx *main, con
 
 bool config_get_mode(struct kmscon_conf_t *conf, const char *gpu, const char *connector,
 		     unsigned int *width, unsigned int *height, unsigned int *rate);
+void config_get_screen(struct kmscon_conf_t *conf, const char *gpu, const char *connector,
+		       enum Orientation *orientation, bool *enabled);
 
 #endif /* KMSCON_CONFIG_H */

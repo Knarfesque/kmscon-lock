@@ -41,8 +41,13 @@
 ## Multi monitor configuration [clone, largest, scaled], default is scaled.
 #multi-monitor=scaled
 
-## Screen rotation, can be [normal, left, upside-down, right]
-#rotate=left
+## Screen configuration, can be [normal, left, upside-down, right, disabled]
+## Default all screens to rotate left
+#screen=left
+## Specific screen to be upside-down
+#screen=pci-00d.00.0[HDMI-A-1]upside-down
+## Disable HDMI-A-1
+#screen=[HDMI-A-1]disabled
 
 ## Fonts
 ## font-engine, can be [freetype, pango, psf, unifont, 8x16], by default kmscon tries in this order.

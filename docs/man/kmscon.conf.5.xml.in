@@ -513,9 +513,16 @@ font-name=Ubuntu Mono
       </varlistentry>
 
       <varlistentry>
-        <term><option>rotate</option></term>
+        <term><option>screen {gpu}[{connector}]{config}</option></term>
         <listitem>
-          <para>Orientation of output to use. (default: normal)</para>
+          <para>Select the desired screen configuration. gpu and connector are optional.
+          config is one of 'normal', 'upside-down', 'left', 'right' and 'disabled'.
+          If config is 'disabled' kmscon won't use this display, unless it is the only
+          available display.
+          If gpu/connector are not specified, this will apply to all available displays.
+          You can specify multiple screen configurations, to setup different configurations
+          for different displays.
+          </para>
         </listitem>
       </varlistentry>
 
