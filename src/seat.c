@@ -941,8 +941,15 @@ static int seat_video_init(struct kmscon_video *vid)
 			  ret);
 		goto err_close;
 	}
-	return video_wake_up(vid->video);
-
+	ret = video_wake_up(vid->video);
+	if (ret) {
+		log_error("cannot wake up video device %s on seat %s: %d", vid->node, seat->name,
+			  ret);
+		goto err_vid;
+	}
+	return 0;
+err_vid:
+	video_unref(vid->video);
 err_close:
 	uterm_vt_close_device(seat->vt, vid->fd, vid->fd_id);
 	return ret;
