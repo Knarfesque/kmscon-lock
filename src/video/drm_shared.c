@@ -1314,9 +1314,8 @@ void drm_video_destroy(struct video *video)
 	ev_eloop_unregister_idle_cb(video->eloop, do_pflips, video, EV_SINGLE);
 	shl_timer_free(vdrm->timer);
 	ev_eloop_rm_fd(vdrm->efd);
-	close(vdrm->fd);
 	free(vdrm->name);
-	free(video->data);
+	free(vdrm);
 }
 
 static drmModeCrtc *get_current_crtc(int fd, uint32_t encoder_id)
