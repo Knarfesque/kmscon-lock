@@ -236,16 +236,16 @@ int conf_ctx_parse_argv(struct conf_ctx *ctx, int argc, char **argv)
 		if (c <= 0) {
 			break;
 		} else if (c == ':') {
-			fprintf(stderr, "Missing argument for: %s\n", argv[optind - 1]);
-			return -EFAULT;
+			fprintf(stderr, "Ignoring missing argument for: %s\n", argv[optind - 1]);
 		} else if (c == '?') {
 			if (optopt && optopt < LONG_OPTION)
-				fprintf(stderr, "Unknown argument: -%c\n", optopt);
+				fprintf(stderr, "Ignoring unknown argument: -%c\n", optopt);
 			else if (!optopt)
-				fprintf(stderr, "Unknown argument: %s\n", argv[optind - 1]);
+				fprintf(stderr, "Ignoring unknown argument: %s\n",
+					argv[optind - 1]);
 			else
-				fprintf(stderr, "Option takes no arg: %s\n", argv[optind - 1]);
-			return -EFAULT;
+				fprintf(stderr, "Ignoring Option takes no arg: %s\n",
+					argv[optind - 1]);
 		} else if (c < LONG_OPTION) {
 			for (i = 0; i < ctx->onum; ++i) {
 				o = &ctx->opts[i];
@@ -256,7 +256,7 @@ int conf_ctx_parse_argv(struct conf_ctx *ctx, int argc, char **argv)
 				if (o->type->parse) {
 					ret = o->type->parse(o, true, optarg);
 					if (ret)
-						return ret;
+						break;
 				}
 
 				o->flags |= CONF_LOCKED;
@@ -269,9 +269,8 @@ int conf_ctx_parse_argv(struct conf_ctx *ctx, int argc, char **argv)
 			if (o->type->parse) {
 				ret = o->type->parse(o, true, optarg);
 				if (ret)
-					return ret;
+					continue; // the while loop
 			}
-
 			o->flags |= CONF_LOCKED;
 		} else {
 			i = c - NO_LONG_OPTION;
@@ -280,7 +279,7 @@ int conf_ctx_parse_argv(struct conf_ctx *ctx, int argc, char **argv)
 			if (o->type->parse) {
 				ret = o->type->parse(o, false, NULL);
 				if (ret)
-					return ret;
+					continue; // the while loop
 			}
 
 			o->flags |= CONF_LOCKED;
