@@ -45,7 +45,6 @@
 struct kmscon_app {
 	struct conf_ctx *conf_ctx;
 	struct kmscon_conf_t *conf;
-	bool exiting;
 
 	struct ev_eloop *eloop;
 
@@ -60,10 +59,6 @@ static int app_seat_event(struct kmscon_seat *s, unsigned int event, void *data)
 	struct kmscon_app *app = data;
 
 	switch (event) {
-	case KMSCON_SEAT_WAKE_UP:
-		if (app->exiting)
-			return -EBUSY;
-		break;
 	case KMSCON_SEAT_HUP:
 		kmscon_seat_free(app->seat);
 		app->seat = NULL;
@@ -77,9 +72,6 @@ static int app_seat_event(struct kmscon_seat *s, unsigned int event, void *data)
 static int setup_seat(struct kmscon_app *app)
 {
 	int ret;
-
-	if (app->exiting)
-		return -EBUSY;
 
 	ret = kmscon_seat_new(&app->seat, app->conf_ctx, app->conf, app->eloop, app_seat_event,
 			      app);
@@ -223,8 +215,6 @@ int main(int argc, char **argv)
 		goto err_unload_app;
 
 	ev_eloop_run(app.eloop, -1);
-
-	app.exiting = true;
 
 	ret = 0;
 	/* if config->switchvt is set, kmscon needs to switch back

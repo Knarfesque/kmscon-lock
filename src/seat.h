@@ -42,7 +42,6 @@ struct kmscon_session;
 struct kmscon_video;
 
 enum kmscon_seat_event {
-	KMSCON_SEAT_WAKE_UP,
 	KMSCON_SEAT_HUP,
 };
 

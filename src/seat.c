@@ -98,6 +98,7 @@ struct kmscon_seat {
 
 	bool awake;
 	bool foreground;
+	bool exiting;
 	struct kmscon_session *current_sess;
 
 	/* DPMS timeout management */
@@ -229,22 +230,15 @@ static int seat_go_asleep(struct kmscon_seat *seat)
 
 static int seat_go_awake(struct kmscon_seat *seat)
 {
-	int ret;
-
+	if (seat->exiting) {
+		log_warning("cannot wake up seat %s while exiting", seat->name);
+		return -EBUSY;
+	}
 	if (seat->awake)
 		return 0;
 
-	if (seat->cb) {
-		ret = seat->cb(seat, KMSCON_SEAT_WAKE_UP, seat->data);
-		if (ret) {
-			log_warning("cannot wake up seat %s: %d", seat->name, ret);
-			return ret;
-		}
-	}
-
 	seat->awake = true;
 	input_wake_up(seat->input);
-
 	return 0;
 }
 
@@ -820,6 +814,7 @@ int kmscon_seat_exit(struct kmscon_seat *seat)
 	if (!seat)
 		return 0;
 
+	seat->exiting = true;
 	seat_switch(seat, NULL);
 
 	ret = seat_go_asleep(seat);
