@@ -810,7 +810,7 @@ err_free:
 	return ret;
 }
 
-void kmscon_seat_free(struct kmscon_seat *seat)
+int kmscon_seat_exit(struct kmscon_seat *seat)
 {
 	struct kmscon_session *s;
 	struct kmscon_video *vid;
@@ -818,7 +818,7 @@ void kmscon_seat_free(struct kmscon_seat *seat)
 	int ret;
 
 	if (!seat)
-		return;
+		return 0;
 
 	seat_switch(seat, NULL);
 
@@ -835,6 +835,13 @@ void kmscon_seat_free(struct kmscon_seat *seat)
 		kmscon_seat_remove_video(seat, vid);
 	}
 
+	if (seat->conf->switchvt)
+		return uterm_vt_deactivate(seat->vt);
+	return 0;
+}
+
+void kmscon_seat_free(struct kmscon_seat *seat)
+{
 	uterm_vt_deallocate(seat->vt);
 	uterm_monitor_unref(seat->mon);
 	input_unregister_key_cb(seat->input, seat_input_event, seat);

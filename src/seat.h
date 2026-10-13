@@ -51,6 +51,7 @@ typedef int (*kmscon_seat_cb_t)(struct kmscon_seat *seat, unsigned int event, vo
 int kmscon_seat_new(struct kmscon_seat **out, struct conf_ctx *main_conf,
 		    struct kmscon_conf_t *conf, struct ev_eloop *eloop, kmscon_seat_cb_t cb,
 		    void *data);
+int kmscon_seat_exit(struct kmscon_seat *seat);
 void kmscon_seat_free(struct kmscon_seat *seat);
 int kmscon_seat_startup(struct kmscon_seat *seat);
 int kmscon_seat_update_xkb_layout(struct kmscon_seat *seat, const char *model, const char *layout,

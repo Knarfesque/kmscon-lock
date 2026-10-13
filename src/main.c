@@ -227,6 +227,11 @@ int main(int argc, char **argv)
 	app.exiting = true;
 
 	ret = 0;
+	/* if config->switchvt is set, kmscon needs to switch back
+	 * to the previous VT, and wait 100ms to acknowledge SIGUSR2
+	 */
+	if (kmscon_seat_exit(app.seat) == -EINPROGRESS)
+		ev_eloop_run(app.eloop, 100);
 
 	destroy_seat(&app);
 err_unload_app:
