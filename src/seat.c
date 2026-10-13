@@ -104,9 +104,6 @@ struct kmscon_seat {
 	/* DPMS timeout management */
 	struct ev_timer *dpms_timer;
 	bool dpms_blanked;
-
-	kmscon_seat_cb_t cb;
-	void *data;
 };
 
 const char be_drm3d[] = "drm3d";
@@ -403,8 +400,9 @@ static void seat_vt_hup(struct uterm_vt *vt, void *data)
 {
 	struct kmscon_seat *seat = data;
 
-	if (seat->cb)
-		seat->cb(seat, KMSCON_SEAT_HUP, seat->data);
+	log_error("Received HUP from current VT on seat %s", seat->name);
+	kmscon_seat_exit(seat);
+	ev_eloop_exit(seat->eloop);
 }
 
 struct uterm_vt_cb seat_vt_cb = {
@@ -676,8 +674,7 @@ static struct uterm_monitor_cb seat_monitor_cb = {
 };
 
 int kmscon_seat_new(struct kmscon_seat **out, struct conf_ctx *main_conf,
-		    struct kmscon_conf_t *conf, struct ev_eloop *eloop, kmscon_seat_cb_t cb,
-		    void *data)
+		    struct kmscon_conf_t *conf, struct ev_eloop *eloop)
 {
 	struct kmscon_seat *seat;
 	const char *seatname;
@@ -691,8 +688,6 @@ int kmscon_seat_new(struct kmscon_seat **out, struct conf_ctx *main_conf,
 		return -ENOMEM;
 	memset(seat, 0, sizeof(*seat));
 	seat->eloop = eloop;
-	seat->cb = cb;
-	seat->data = data;
 	dlist_init(&seat->displays);
 	dlist_init(&seat->videos);
 	dlist_init(&seat->sessions);

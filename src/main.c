@@ -54,27 +54,11 @@ struct kmscon_app {
 	struct kmscon_dbus *dbus;
 };
 
-static int app_seat_event(struct kmscon_seat *s, unsigned int event, void *data)
-{
-	struct kmscon_app *app = data;
-
-	switch (event) {
-	case KMSCON_SEAT_HUP:
-		kmscon_seat_free(app->seat);
-		app->seat = NULL;
-		log_debug("seat HUP in default-mode; exiting...");
-		ev_eloop_exit(app->eloop);
-		break;
-	}
-	return 0;
-}
-
 static int setup_seat(struct kmscon_app *app)
 {
 	int ret;
 
-	ret = kmscon_seat_new(&app->seat, app->conf_ctx, app->conf, app->eloop, app_seat_event,
-			      app);
+	ret = kmscon_seat_new(&app->seat, app->conf_ctx, app->conf, app->eloop);
 	if (ret) {
 		log_error("cannot create seat object: %d", ret);
 		return ret;
