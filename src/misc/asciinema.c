@@ -380,12 +380,11 @@ int kmscon_asciinema_new(struct kmscon_asciinema **out, struct ev_eloop *eloop, 
 		goto out_file;
 	}
 
-	player = malloc(sizeof(*player));
+	player = calloc(1, sizeof(*player));
 	if (!player) {
 		ret = -ENOMEM;
 		goto out_file;
 	}
-	memset(player, 0, sizeof(*player));
 	player->loop = loop;
 	player->write_cb = write_cb;
 	player->data = data;

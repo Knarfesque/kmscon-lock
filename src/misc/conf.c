@@ -57,18 +57,15 @@ struct conf_ctx {
 int conf_ctx_new(struct conf_ctx **out, const struct conf_option *opts, size_t onum, void *mem)
 {
 	struct conf_ctx *ctx;
-	size_t size;
 
 	if (!out || !opts || !onum)
 		return -EINVAL;
 
-	size = sizeof(*ctx) + onum * sizeof(*opts);
-	ctx = malloc(size);
+	ctx = calloc(1, sizeof(*ctx) + onum * sizeof(*opts));
 	if (!ctx) {
 		log_error("cannot allocate memory for config context");
 		return -ENOMEM;
 	}
-	memset(ctx, 0, size);
 	ctx->opts = (void *)((char *)ctx + sizeof(*ctx));
 	ctx->onum = onum;
 	ctx->mem = mem;
@@ -927,34 +924,30 @@ static int conf_parse_grab(struct conf_option *opt, bool on, const char *arg)
 	if (ret)
 		return ret;
 
-	grab = malloc(sizeof(*grab));
+	grab = calloc(1, sizeof(*grab));
 	if (!grab) {
 		ret = -ENOMEM;
 		goto err_list;
 	}
-	memset(grab, 0, sizeof(*grab));
 
 	if (list_num) {
-		grab->mods = malloc(sizeof(*grab->mods) * list_num);
+		grab->mods = calloc(list_num, sizeof(*grab->mods));
 		if (!grab->mods) {
 			ret = -ENOMEM;
 			goto err_grab;
 		}
-		memset(grab->mods, 0, sizeof(*grab->mods) * list_num);
 
-		grab->num_syms = malloc(sizeof(*grab->num_syms) * list_num);
+		grab->num_syms = calloc(list_num, sizeof(*grab->num_syms));
 		if (!grab->num_syms) {
 			ret = -ENOMEM;
 			goto err_grab;
 		}
-		memset(grab->num_syms, 0, sizeof(*grab->num_syms) * list_num);
 
-		grab->keysyms = malloc(sizeof(*grab->keysyms) * list_num);
+		grab->keysyms = calloc(list_num, sizeof(*grab->keysyms));
 		if (!grab->keysyms) {
 			ret = -ENOMEM;
 			goto err_grab;
 		}
-		memset(grab->keysyms, 0, sizeof(*grab->keysyms) * list_num);
 	}
 
 	l = 0;
@@ -967,7 +960,7 @@ static int conf_parse_grab(struct conf_option *opt, bool on, const char *arg)
 			continue;
 		}
 
-		grab->keysyms[l] = malloc(sizeof(*grab->keysyms[l]) * key_num);
+		grab->keysyms[l] = calloc(key_num, sizeof(*grab->keysyms[l]));
 		if (!grab->keysyms[l]) {
 			ret = -ENOMEM;
 			free(keys);
@@ -1026,10 +1019,9 @@ static int conf_copy_grab(struct conf_option *opt, const struct conf_option *src
 		return 0;
 	}
 
-	grab = malloc(sizeof(*grab));
+	grab = calloc(1, sizeof(*grab));
 	if (!grab)
 		return -ENOMEM;
-	memset(grab, 0, sizeof(*grab));
 	grab->num = s->num;
 
 	if (grab->num) {
@@ -1047,12 +1039,11 @@ static int conf_copy_grab(struct conf_option *opt, const struct conf_option *src
 		}
 		memcpy(grab->num_syms, s->num_syms, sizeof(*grab->num_syms) * grab->num);
 
-		grab->keysyms = malloc(sizeof(*grab->keysyms) * grab->num);
+		grab->keysyms = calloc(grab->num, sizeof(*grab->keysyms));
 		if (!grab->keysyms) {
 			ret = -ENOMEM;
 			goto err_grab;
 		}
-		memset(grab->keysyms, 0, sizeof(*grab->keysyms) * grab->num);
 	}
 
 	for (i = 0; i < grab->num; ++i) {

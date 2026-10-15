@@ -126,11 +126,11 @@ static void parse_netlink_message(struct addr_book *book, struct nlmsghdr *nlh)
 struct addr_book *issue_network_gen_book(void)
 {
 	struct addr_book *book;
-	struct sockaddr_nl sa;
+	struct sockaddr_nl sa = {0};
 	char buf[BUF_SIZE];
 	struct iovec iov = {buf, sizeof(buf)};
 	struct msghdr msg = {0};
-	struct req req;
+	struct req req = {0};
 	bool end_of_dump = false;
 	int status;
 	int nl_fd;
@@ -151,10 +151,8 @@ struct addr_book *issue_network_gen_book(void)
 	if (nl_fd < 0)
 		return NULL;
 
-	memset(&sa, 0, sizeof(sa));
 	sa.nl_family = AF_NETLINK;
 
-	memset(&req, 0, sizeof(req));
 	req.nlh.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtgenmsg));
 	req.nlh.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP; // DUMP returns all addresses
 	req.nlh.nlmsg_type = RTM_GETADDR;

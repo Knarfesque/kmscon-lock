@@ -86,11 +86,10 @@ int kmscon_pty_new(struct kmscon_pty **out, kmscon_pty_input_cb input_cb,
 	if (!out || !input_cb)
 		return -EINVAL;
 
-	pty = malloc(sizeof(*pty));
+	pty = calloc(1, sizeof(*pty));
 	if (!pty)
 		return -ENOMEM;
 
-	memset(pty, 0, sizeof(*pty));
 	pty->fd = -1;
 	pty->ref = 1;
 	pty->input_cb = input_cb;
@@ -212,13 +211,11 @@ static void __attribute__((noreturn)) exec_child(const char *term, const char *c
 	int ret;
 
 	if (env_reset) {
-		env = malloc(sizeof(char *));
+		env = calloc(1, sizeof(char *));
 		if (!env) {
 			log_error("cannot allocate memory for environment (%d): %m", errno);
 			exit(EXIT_FAILURE);
 		}
-
-		memset(env, 0, sizeof(char *));
 		environ = env;
 
 		def_argv = (char *[]){"/bin/login", "-p", NULL};
@@ -360,9 +357,8 @@ static int pty_spawn(struct kmscon_pty *pty, int master, unsigned short width,
 		     unsigned short height, bool drm)
 {
 	pid_t pid;
-	struct winsize ws;
+	struct winsize ws = {0};
 
-	memset(&ws, 0, sizeof(ws));
 	ws.ws_col = width;
 	ws.ws_row = height;
 
@@ -625,12 +621,11 @@ int kmscon_pty_get_slave_name(struct kmscon_pty *pty, char *buf, size_t len)
 void kmscon_pty_resize(struct kmscon_pty *pty, unsigned short width, unsigned short height)
 {
 	int ret;
-	struct winsize ws;
+	struct winsize ws = {0};
 
 	if (!pty || !pty_is_open(pty))
 		return;
 
-	memset(&ws, 0, sizeof(ws));
 	ws.ws_col = width;
 	ws.ws_row = height;
 

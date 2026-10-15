@@ -142,10 +142,9 @@ struct kmscon_dbus *kmscon_dbus_new(struct ev_eloop *eloop)
 	struct kmscon_dbus *dbus;
 	DBusError error;
 
-	dbus = malloc(sizeof(*dbus));
+	dbus = calloc(1, sizeof(*dbus));
 	if (!dbus)
 		return NULL;
-	memset(dbus, 0, sizeof(*dbus));
 
 	dbus->eloop = eloop;
 
