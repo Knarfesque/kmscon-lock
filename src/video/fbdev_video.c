@@ -83,10 +83,9 @@ static int display_init(struct display *disp)
 	struct fbdev_display *fbdev;
 	int ret;
 
-	fbdev = malloc(sizeof(*fbdev));
+	fbdev = calloc(1, sizeof(*fbdev));
 	if (!fbdev)
 		return -ENOMEM;
-	memset(fbdev, 0, sizeof(*fbdev));
 	disp->data = fbdev;
 	disp->dpms = DPMS_UNKNOWN;
 
@@ -470,10 +469,9 @@ static int fb_video_init(struct video *video, int fd)
 
 	log_info("new device on %d", fd);
 
-	vfb = malloc(sizeof(*vfb));
+	vfb = calloc(1, sizeof(*vfb));
 	if (!vfb)
 		return -ENOMEM;
-	memset(vfb, 0, sizeof(*vfb));
 	video->data = vfb;
 
 	vfb->fd = fd;

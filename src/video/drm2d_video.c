@@ -187,10 +187,9 @@ static int drm2d_display_init(struct display *disp)
 {
 	struct drm2d_display *d2d;
 
-	d2d = malloc(sizeof(*d2d));
+	d2d = calloc(1, sizeof(*d2d));
 	if (!d2d)
 		return -ENOMEM;
-	memset(d2d, 0, sizeof(*d2d));
 
 	disp->data = d2d;
 

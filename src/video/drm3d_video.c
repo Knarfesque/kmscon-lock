@@ -344,10 +344,9 @@ static int display_init(struct display *disp)
 {
 	struct drm3d_display *d3d;
 
-	d3d = malloc(sizeof(*d3d));
+	d3d = calloc(1, sizeof(*d3d));
 	if (!d3d)
 		return -ENOMEM;
-	memset(d3d, 0, sizeof(*d3d));
 
 	disp->flags |= DISPLAY_OPENGL;
 	disp->data = d3d;
@@ -508,10 +507,9 @@ static int drm3d_video_init(struct video *video, int fd)
 	EGLint cfgId;
 	EGLint err;
 
-	v3d = malloc(sizeof(*v3d));
+	v3d = calloc(1, sizeof(*v3d));
 	if (!v3d)
 		return -ENOMEM;
-	memset(v3d, 0, sizeof(*v3d));
 
 	ret = drm_video_init(video, fd, &drm_display_ops, page_flip_handler, v3d);
 	if (ret)

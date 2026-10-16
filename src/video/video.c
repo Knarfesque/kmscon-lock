@@ -81,10 +81,9 @@ int display_new(struct display **out, const struct display_ops *ops, struct vide
 	if (!out || !ops)
 		return -EINVAL;
 
-	disp = malloc(sizeof(*disp));
+	disp = calloc(1, sizeof(*disp));
 	if (!disp)
 		return -ENOMEM;
-	memset(disp, 0, sizeof(*disp));
 	disp->name = strdup(name);
 	disp->ref = 1;
 	disp->ops = ops;
@@ -436,12 +435,11 @@ int video_new(struct video **out, struct ev_eloop *eloop, int fd, const char *ba
 		return -ENOENT;
 	}
 
-	video = malloc(sizeof(*video));
+	video = calloc(1, sizeof(*video));
 	if (!video) {
 		ret = -ENOMEM;
 		goto err_unref;
 	}
-	memset(video, 0, sizeof(*video));
 	video->ref = 1;
 
 	video->record = record;

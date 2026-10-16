@@ -1127,14 +1127,13 @@ static void display_event(int fd, unsigned int frame, unsigned int sec, unsigned
 static int drm_video_read_events(struct video *video)
 {
 	struct drm_video *vdrm = video->data;
-	drmEventContext ev;
+	drmEventContext ev = {0};
 	int ret;
 
 	/* TODO: DRM subsystem does not support non-blocking reads and it also
 	 * doesn't return 0/-1 if the device is dead. This can lead to serious
 	 * deadlocks in userspace if we read() after a device was unplugged. Fix
 	 * this upstream and then make this code actually loop. */
-	memset(&ev, 0, sizeof(ev));
 	ev.version = DRM_EVENT_CONTEXT_VERSION;
 	ev.page_flip_handler2 = display_event;
 	errno = 0;
@@ -1253,10 +1252,9 @@ int drm_video_init(struct video *video, int fd, const struct display_ops *displa
 	drmVersionPtr version;
 	int ret;
 
-	vdrm = malloc(sizeof(*vdrm));
+	vdrm = calloc(1, sizeof(*vdrm));
 	if (!vdrm)
 		return -ENOMEM;
-	memset(vdrm, 0, sizeof(*vdrm));
 	video->data = vdrm;
 	vdrm->data = data;
 	vdrm->page_flip = pflip;
@@ -1607,13 +1605,12 @@ int drm_video_poll(struct video *video)
 int drm_video_wait_pflip(struct video *video, unsigned int *mtimeout)
 {
 	struct drm_video *vdrm = video->data;
-	struct pollfd pfd;
+	struct pollfd pfd = {0};
 	int ret;
 	uint64_t elapsed;
 
 	shl_timer_start(vdrm->timer);
 
-	memset(&pfd, 0, sizeof(pfd));
 	pfd.fd = vdrm->fd;
 	pfd.events = POLLIN;
 
