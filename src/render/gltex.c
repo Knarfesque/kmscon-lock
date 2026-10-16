@@ -298,10 +298,9 @@ static struct atlas *get_atlas(struct kmscon_text *txt, unsigned int num)
 		return atlas;
 
 	/* all atlases are full so we have to create a new atlas */
-	atlas = malloc(sizeof(*atlas));
+	atlas = calloc(1, sizeof(*atlas));
 	if (!atlas)
 		return NULL;
-	memset(atlas, 0, sizeof(*atlas));
 
 	gl_clear_error();
 
@@ -411,10 +410,9 @@ static struct gl_glyph *find_glyph(struct kmscon_text *txt, const struct tsm_scr
 	if (shl_hashtable_find(gt->glyphs, (void **)&glglyph, id))
 		return glglyph;
 
-	glglyph = malloc(sizeof(*glglyph));
+	glglyph = calloc(1, sizeof(*glglyph));
 	if (!glglyph)
 		return NULL;
-	memset(glglyph, 0, sizeof(*glglyph));
 
 	glyph = kmscon_font_render(font, &attr, ch);
 	if (!glyph)

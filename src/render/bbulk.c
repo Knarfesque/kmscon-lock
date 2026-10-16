@@ -88,10 +88,9 @@ static int bbulk_init(struct kmscon_text *txt)
 {
 	struct bbulk *bb;
 
-	bb = malloc(sizeof(*bb));
+	bb = calloc(1, sizeof(*bb));
 	if (!bb)
 		return -ENOMEM;
-	memset(bb, 0, sizeof(*bb));
 
 	txt->data = bb;
 	return 0;
@@ -151,17 +150,15 @@ static int bbulk_set(struct kmscon_text *txt)
 	bb->cell_count = txt->max_cols * txt->max_rows;
 	max_damage_rects = SHL_DIV_ROUND_UP(txt->max_cols, DAMAGE_MERGE_LEN + 1) * txt->max_rows;
 
-	bb->cells = malloc(sizeof(*bb->cells) * bb->cell_count);
+	bb->cells = calloc(bb->cell_count, sizeof(*bb->cells));
 	if (!bb->cells)
 		goto err_no_mem;
-	memset(bb->cells, 0, sizeof(*bb->cells) * bb->cell_count);
 
-	bb->cell_flags = malloc(sizeof(*bb->cell_flags) * bb->cell_count);
+	bb->cell_flags = calloc(bb->cell_count, sizeof(*bb->cell_flags));
 	if (!bb->cell_flags)
 		goto free_prev;
-	memset(bb->cell_flags, 0, sizeof(*bb->cell_flags) * bb->cell_count);
 
-	bb->damage_rects = malloc(sizeof(*bb->damage_rects) * max_damage_rects);
+	bb->damage_rects = calloc(max_damage_rects, sizeof(*bb->damage_rects));
 	if (!bb->damage_rects)
 		goto free_damages;
 
@@ -226,13 +223,10 @@ static struct kmscon_glyph *bbulk_rotate_glyph(struct kmscon_glyph *glyph,
 	struct kmscon_glyph *rglyph;
 	int width, height, i, j;
 	uint8_t *dst, *src;
-	unsigned int size = sizeof(*rglyph) + glyph->buf.width * glyph->buf.height;
 
-	rglyph = malloc(size);
+	rglyph = calloc(1, sizeof(*rglyph) + glyph->buf.width * glyph->buf.height);
 	if (!rglyph)
 		goto err_free;
-
-	memset(rglyph, 0, size);
 
 	if (orientation == OR_NORMAL || orientation == OR_UPSIDE_DOWN) {
 		width = buf->width;
