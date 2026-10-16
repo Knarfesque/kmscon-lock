@@ -122,24 +122,25 @@ struct kmscon_terminal {
 static void coord_to_cell(struct kmscon_terminal *term, int32_t x, int32_t y, unsigned int *posx,
 			  unsigned int *posy)
 {
-	int fw = term->font->width;
-	int fh = term->font->height;
 	int w = term->cols;
 	int h = term->rows;
+	int fw, fh;
 
-	*posx = x / fw;
-	*posy = y / fh;
+	if (!term->font || !w || !h) {
+		*posx = 0;
+		*posy = 0;
+		return;
+	}
+	fw = term->font->width;
+	fh = term->font->height;
 
-	if (*posx >= w)
-		*posx = w - 1;
-
-	if (*posy >= h)
-		*posy = h - 1;
+	*posx = min(x / fw, w - 1);
+	*posy = min(y / fh, h - 1);
 }
 
 static void draw_pointer(struct screen *scr)
 {
-	if (!scr->term->pointer.visible || scr->hw_cursor)
+	if (!scr->term->pointer.visible || scr->hw_cursor || !scr->term->font)
 		return;
 
 	if (scr->scaled) {
@@ -255,6 +256,9 @@ static void setup_hw_cursor(struct screen *scr)
 	unsigned int beam_w;
 	uint32_t *pixels;
 	int ret;
+
+	if (!scr->txt->font)
+		return;
 
 	pixels = generate_ibeam_cursor(scr->txt->font->height, &beam_w, &beam_h, rotate);
 	if (!pixels)
@@ -739,6 +743,9 @@ static bool terminal_update_size(struct kmscon_terminal *term)
 			font_set(term, new_font_size);
 			font_update_all(term);
 		}
+	} else if (!term->font) {
+		font_set(term, term->font_size);
+		font_update_all(term);
 	}
 
 	if (term->conf->multi_monitor && !strcmp(term->conf->multi_monitor, "largest")) {
@@ -816,7 +823,6 @@ int terminal_add_display(struct kmscon_terminal *term, struct display *disp)
 	struct screen *scr;
 	const char *be, *gpu, *connector;
 	enum Orientation orientation;
-	bool opengl;
 	int ret;
 
 	dlist_for_each_entry(scr, &term->screens, list)
@@ -827,7 +833,7 @@ int terminal_add_display(struct kmscon_terminal *term, struct display *disp)
 
 	scr = calloc(1, sizeof(*scr));
 	if (!scr) {
-		log_error("cannot allocate memory for display %p", disp);
+		log_error("cannot allocate memory for display %s", display_name(disp));
 		return -ENOMEM;
 	}
 	scr->term = term;
@@ -845,8 +851,7 @@ int terminal_add_display(struct kmscon_terminal *term, struct display *disp)
 		goto err_free;
 	}
 
-	opengl = display_has_opengl(scr->disp);
-	if (opengl)
+	if (display_has_opengl(scr->disp))
 		be = "gltex";
 	else
 		be = "bbulk";
@@ -859,29 +864,20 @@ int terminal_add_display(struct kmscon_terminal *term, struct display *disp)
 
 	dlist_link(&term->screens, &scr->list);
 
-	ret = kmscon_text_set(scr->txt, term->font);
-	if (ret) {
-		log_error("cannot set text-renderer parameters");
-		goto err_text;
-	}
-
-	log_notice("Display %s[%s] with backend [%s] text renderer [%s] font engine [%s]\n", gpu,
-		   connector, display_backend_name(disp), scr->txt->ops->name,
-		   term->font->ops->name);
-
-	log_debug("added display %p to terminal %p", disp, term);
+	terminal_update_size_notify(term);
 
 	if (term->conf->mouse && !term->conf->soft_cursor)
 		setup_hw_cursor(scr);
 
-	terminal_update_size_notify(term);
+	log_notice("Display %s[%s] with backend [%s] text renderer [%s] font engine [%s] Cursor "
+		   "[%s]\n",
+		   gpu, connector, display_backend_name(disp), scr->txt->ops->name,
+		   term->font->ops->name, scr->hw_cursor ? "HW" : "SW");
+
 	display_ref(scr->disp);
 	do_redraw_screen(scr);
 	return 0;
 
-err_text:
-	kmscon_text_unref(scr->txt);
-	dlist_unlink(&scr->list);
 err_cb:
 	display_unregister_pageflip(scr->disp, display_pageflip, scr);
 err_free:
@@ -915,7 +911,7 @@ void terminal_rm_display(struct kmscon_terminal *term, struct display *disp)
 	dlist_for_each_entry(scr, &term->screens, list)
 	{
 		if (scr->disp == disp) {
-			log_debug("removed display %p from terminal %p", disp, term);
+			log_debug("removed display %s from terminal %p", display_name(disp), term);
 			free_screen(scr, true);
 			return;
 		}
@@ -928,7 +924,7 @@ static void zoom_in(struct kmscon_terminal *term)
 
 	term->auto_font_size = false; // don't auto-adjust font size anymore
 
-	if (term->font_size > 150) // don't allow zoom in beyond 150
+	if (term->font_size > 150 || !term->font_size) // don't allow zoom in beyond 150
 		return;
 
 	new_size = term->font_size + term->font->increase_step;
@@ -1456,14 +1452,14 @@ struct kmscon_terminal *terminal_new(struct kmscon_session *session, unsigned in
 	if (ret)
 		goto err_vte;
 
-	term->auto_font_size = (term->conf->font_size == 0);
-	if (term->auto_font_size)
-		term->font_size = terminal_get_auto_font_size(term);
-	else
-		term->font_size = term->conf->font_size;
-	ret = font_set(term, term->font_size);
-	if (ret)
-		goto err_vte;
+	term->font_size = term->conf->font_size;
+	if (term->font_size) {
+		ret = font_set(term, term->font_size);
+		if (ret)
+			goto err_vte;
+	} else {
+		term->auto_font_size = true;
+	}
 
 	ret = kmscon_pty_new(&term->pty, pty_input, pty_exit, term);
 	if (ret)
