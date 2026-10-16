@@ -60,10 +60,9 @@ static inline int shl_timer_new(struct shl_timer **out)
 	if (!out)
 		return -EINVAL;
 
-	timer = malloc(sizeof(*timer));
+	timer = calloc(1, sizeof(*timer));
 	if (!timer)
 		return -ENOMEM;
-	memset(timer, 0, sizeof(*timer));
 	shl_timer_reset(timer);
 
 	*out = timer;

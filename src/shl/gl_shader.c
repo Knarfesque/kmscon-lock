@@ -141,10 +141,9 @@ int gl_shader_new(struct gl_shader **out, const char *vert, int vert_len, const 
 	if (!out || !vert || !frag)
 		return -EINVAL;
 
-	shader = malloc(sizeof(*shader));
+	shader = calloc(1, sizeof(*shader));
 	if (!shader)
 		return -ENOMEM;
-	memset(shader, 0, sizeof(*shader));
 	shader->ref = 1;
 
 	log_debug("new shader");

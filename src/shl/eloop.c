@@ -381,10 +381,9 @@ static int signal_new(struct ev_signal_shared **out, struct ev_eloop *loop, int 
 	if (signum < 0)
 		return -EINVAL;
 
-	sig = malloc(sizeof(*sig));
+	sig = calloc(1, sizeof(*sig));
 	if (!sig)
 		return -ENOMEM;
-	memset(sig, 0, sizeof(*sig));
 	sig->signum = signum;
 
 	ret = shl_hook_new(&sig->hook);
@@ -567,21 +566,20 @@ int ev_eloop_new(struct ev_eloop **out)
 {
 	struct ev_eloop *loop;
 	int ret;
-	struct epoll_event ep;
+	struct epoll_event ep = {0};
 
 	if (!out)
 		return -EINVAL;
 
-	loop = malloc(sizeof(*loop));
+	loop = calloc(1, sizeof(*loop));
 	if (!loop)
 		return -ENOMEM;
 
-	memset(loop, 0, sizeof(*loop));
 	loop->ref = 1;
 	dlist_init(&loop->sig_list);
 
 	loop->cur_fds_size = 32;
-	loop->cur_fds = malloc(sizeof(struct epoll_event) * loop->cur_fds_size);
+	loop->cur_fds = calloc(loop->cur_fds_size, sizeof(struct epoll_event));
 	if (!loop->cur_fds) {
 		ret = -ENOMEM;
 		goto err_free;
@@ -621,7 +619,6 @@ int ev_eloop_new(struct ev_eloop **out)
 		goto err_fd;
 	}
 
-	memset(&ep, 0, sizeof(ep));
 	ep.events |= EPOLLIN;
 	ep.data.ptr = loop;
 
@@ -1072,11 +1069,10 @@ int ev_fd_new(struct ev_fd **out, int rfd, int mask, ev_fd_cb cb, void *data)
 	if (!out || rfd < 0)
 		return -EINVAL;
 
-	fd = malloc(sizeof(*fd));
+	fd = calloc(1, sizeof(*fd));
 	if (!fd)
 		return -ENOMEM;
 
-	memset(fd, 0, sizeof(*fd));
 	fd->ref = 1;
 	fd->fd = rfd;
 	fd->mask = mask;
@@ -1123,13 +1119,12 @@ void ev_fd_unref(struct ev_fd *fd)
 
 static int fd_epoll_add(struct ev_fd *fd)
 {
-	struct epoll_event ep;
+	struct epoll_event ep = {0};
 	int ret;
 
 	if (!fd->loop)
 		return 0;
 
-	memset(&ep, 0, sizeof(ep));
 	if (fd->mask & EV_READABLE)
 		ep.events |= EPOLLIN;
 	if (fd->mask & EV_WRITEABLE)
@@ -1161,13 +1156,12 @@ static void fd_epoll_remove(struct ev_fd *fd)
 
 static int fd_epoll_update(struct ev_fd *fd)
 {
-	struct epoll_event ep;
+	struct epoll_event ep = {0};
 	int ret;
 
 	if (!fd->loop)
 		return 0;
 
-	memset(&ep, 0, sizeof(ep));
 	if (fd->mask & EV_READABLE)
 		ep.events |= EPOLLIN;
 	if (fd->mask & EV_WRITEABLE)
@@ -1524,11 +1518,10 @@ int ev_timer_new(struct ev_timer **out, const struct itimerspec *spec, ev_timer_
 	if (!spec)
 		spec = &ev_timer_zero;
 
-	timer = malloc(sizeof(*timer));
+	timer = calloc(1, sizeof(*timer));
 	if (!timer)
 		return -ENOMEM;
 
-	memset(timer, 0, sizeof(*timer));
 	timer->ref = 1;
 	timer->cb = cb;
 	timer->data = data;
@@ -1887,10 +1880,9 @@ int ev_counter_new(struct ev_counter **out, ev_counter_cb cb, void *data)
 	if (!out)
 		return -EINVAL;
 
-	cnt = malloc(sizeof(*cnt));
+	cnt = calloc(1, sizeof(*cnt));
 	if (!cnt)
 		return -ENOMEM;
-	memset(cnt, 0, sizeof(*cnt));
 	cnt->ref = 1;
 	cnt->cb = cb;
 	cnt->data = data;

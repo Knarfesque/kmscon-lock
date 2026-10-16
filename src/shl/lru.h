@@ -57,10 +57,9 @@ static inline struct shl_lru *shl_lru_new(unsigned int max_size)
 	if (max_size == 0)
 		return NULL;
 
-	lru = malloc(sizeof(*lru));
+	lru = calloc(1, sizeof(*lru));
 	if (!lru)
 		return NULL;
-	memset(lru, 0, sizeof(*lru));
 
 	lru->max_size = max_size;
 	lru->size = 0;

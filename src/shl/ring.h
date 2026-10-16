@@ -56,11 +56,9 @@ static inline int shl_ring_new(struct shl_ring **out)
 	if (!out)
 		return -EINVAL;
 
-	ring = malloc(sizeof(*ring));
+	ring = calloc(1, sizeof(*ring));
 	if (!ring)
 		return -ENOMEM;
-
-	memset(ring, 0, sizeof(*ring));
 
 	*out = ring;
 	return 0;

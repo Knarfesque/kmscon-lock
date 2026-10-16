@@ -83,10 +83,9 @@ static inline int shl_hashtable_new(struct shl_hashtable **out, shl_hash_cb hash
 	if (!out || !hash_cb || !equal_cb)
 		return -EINVAL;
 
-	tbl = malloc(sizeof(*tbl));
+	tbl = calloc(1, sizeof(*tbl));
 	if (!tbl)
 		return -ENOMEM;
-	memset(tbl, 0, sizeof(*tbl));
 	tbl->hash_cb = hash_cb;
 	tbl->equal_cb = equal_cb;
 	tbl->free_value = free_value;

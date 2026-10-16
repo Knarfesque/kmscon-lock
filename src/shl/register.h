@@ -114,10 +114,9 @@ static inline int shl_register_new(struct shl_register **out)
 	if (!out)
 		return -EINVAL;
 
-	reg = malloc(sizeof(*reg));
+	reg = calloc(1, sizeof(*reg));
 	if (!reg)
 		return -ENOMEM;
-	memset(reg, 0, sizeof(*reg));
 	dlist_init(&reg->records);
 
 	ret = pthread_mutex_init(&reg->mutex, NULL);
@@ -172,12 +171,11 @@ static inline int shl_register_add_cb(struct shl_register *reg, const char *name
 		}
 	}
 
-	record = malloc(sizeof(*record));
+	record = calloc(1, sizeof(*record));
 	if (!record) {
 		ret = -ENOMEM;
 		goto out_unlock;
 	}
-	memset(record, 0, sizeof(*record));
 	record->ref = 1;
 	record->data = data;
 	record->destroy = destroy;

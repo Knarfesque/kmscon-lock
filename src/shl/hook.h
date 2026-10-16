@@ -71,10 +71,9 @@ static inline int shl_hook_new(struct shl_hook **out)
 	if (!out)
 		return -EINVAL;
 
-	hook = malloc(sizeof(*hook));
+	hook = calloc(1, sizeof(*hook));
 	if (!hook)
 		return -ENOMEM;
-	memset(hook, 0, sizeof(*hook));
 	dlist_init(&hook->entries);
 
 	*out = hook;
@@ -117,10 +116,9 @@ static inline int shl_hook_add(struct shl_hook *hook, shl_hook_cb cb, void *data
 	if (!hook || !cb)
 		return -EINVAL;
 
-	entry = malloc(sizeof(*entry));
+	entry = calloc(1, sizeof(*entry));
 	if (!entry)
 		return -ENOMEM;
-	memset(entry, 0, sizeof(*entry));
 	entry->cb = cb;
 	entry->data = data;
 	entry->oneshot = oneshot;
