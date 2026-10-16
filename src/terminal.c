@@ -607,9 +607,6 @@ static void terminal_update_size_clone(struct kmscon_terminal *term)
 	if (min_cols == UINT_MAX || min_rows == UINT_MAX)
 		return;
 
-	if (min_cols == term->cols && min_rows == term->rows)
-		return;
-
 	term->cols = min_cols;
 	term->rows = min_rows;
 
@@ -755,14 +752,16 @@ static bool terminal_update_size(struct kmscon_terminal *term)
 	} else {
 		terminal_update_size_clone(term);
 	}
-	if (cols == term->cols && rows == term->rows)
-		return false;
 
 	dlist_for_each_entry(scr, &term->screens, list)
 	{
 		if (scr->enabled)
 			kmscon_text_resize(scr->txt, term->cols, term->rows);
 	}
+
+	if (cols == term->cols && rows == term->rows)
+		return false;
+
 	log_notice("Resized terminal to %ux%u\n", term->cols, term->rows);
 	return true;
 }
