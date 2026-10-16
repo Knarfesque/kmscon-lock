@@ -47,12 +47,10 @@ static struct kmscon_text_ops dummy_ops = {
 
 int main(void)
 {
-	struct kmscon_text txt;
-	struct kmscon_font fake_font;
+	struct kmscon_text txt = {0};
+	struct kmscon_font fake_font = {0};
 	int ret;
 
-	memset(&txt, 0, sizeof(txt));
-	memset(&fake_font, 0, sizeof(fake_font));
 	txt.ops = &dummy_ops;
 
 	/* set calls backend set */

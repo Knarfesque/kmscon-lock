@@ -50,8 +50,7 @@ struct kmscon_glyph *kmscon_font_render(struct kmscon_font *font, struct kmscon_
 	(void)font;
 	(void)attr;
 	(void)ch;
-	g = malloc(sizeof(*g) + FAKE_CELL_W * FAKE_CELL_W);
-	memset(g, 0, sizeof(*g) + FAKE_CELL_W * FAKE_CELL_W);
+	g = calloc(1, sizeof(*g) + FAKE_CELL_W * FAKE_CELL_W);
 	g->buf.width = g->buf.height = FAKE_CELL_W;
 	return g;
 }
@@ -174,8 +173,7 @@ int main(void)
 		assert(bb->cells[i].ch == ID_DAMAGED);
 
 	/* Exercise prepare/render + damage path */
-	struct tsm_screen_attr attr;
-	memset(&attr, 0, sizeof(attr));
+	struct tsm_screen_attr attr = {0};
 	ret = bbulk_prepare(&txt, &attr);
 	assert(ret == 0);
 	ret = bbulk_render(&txt);
