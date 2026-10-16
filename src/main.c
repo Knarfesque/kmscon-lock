@@ -162,7 +162,7 @@ int main(int argc, char **argv)
 	int ret;
 	struct conf_ctx *conf_ctx;
 	struct kmscon_conf_t *conf;
-	struct kmscon_app app;
+	struct kmscon_app app = {0};
 
 	ret = kmscon_conf_new(&conf_ctx);
 	if (ret) {
@@ -186,7 +186,6 @@ int main(int argc, char **argv)
 	video_register_drm2d();
 	video_register_fbdev();
 
-	memset(&app, 0, sizeof(app));
 	app.conf_ctx = conf_ctx;
 	app.conf = conf;
 

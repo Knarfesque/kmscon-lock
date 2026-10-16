@@ -787,12 +787,11 @@ int terminal_add_display(struct kmscon_terminal *term, struct display *disp)
 			return 0;
 	}
 
-	scr = malloc(sizeof(*scr));
+	scr = calloc(1, sizeof(*scr));
 	if (!scr) {
 		log_error("cannot allocate memory for display %p", disp);
 		return -ENOMEM;
 	}
-	memset(scr, 0, sizeof(*scr));
 	scr->term = term;
 	scr->disp = disp;
 	scr->enabled = true;
@@ -1380,11 +1379,10 @@ struct kmscon_terminal *terminal_new(struct kmscon_session *session, unsigned in
 	};
 	int ret;
 
-	term = malloc(sizeof(*term));
+	term = calloc(1, sizeof(*term));
 	if (!term)
 		return NULL;
 
-	memset(term, 0, sizeof(*term));
 	term->ref = 1;
 	term->session = session;
 	term->eloop = eloop;

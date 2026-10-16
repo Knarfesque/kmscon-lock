@@ -715,10 +715,9 @@ int kmscon_conf_new(struct conf_ctx **out)
 	if (!out)
 		return -EINVAL;
 
-	conf = malloc(sizeof(*conf));
+	conf = calloc(1, sizeof(*conf));
 	if (!conf)
 		return -ENOMEM;
-	memset(conf, 0, sizeof(*conf));
 
 	struct conf_option options[] = {
 		/* Global Options */

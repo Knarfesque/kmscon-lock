@@ -296,10 +296,9 @@ static void seat_new_display(void *data, struct display *disp)
 
 	log_debug("add display %s to seat %s", display_name(disp), seat->name);
 
-	d = malloc(sizeof(*d));
+	d = calloc(1, sizeof(*d));
 	if (!d)
 		return;
-	memset(d, 0, sizeof(*d));
 	d->disp = disp;
 	d->seat = seat;
 
@@ -476,7 +475,7 @@ static void seat_dpms_timeout(struct ev_timer *timer, uint64_t num, void *data)
 static void seat_dpms_reset_timer(struct kmscon_seat *seat)
 {
 	struct kmscon_display *d;
-	struct itimerspec spec;
+	struct itimerspec spec = {0};
 	int ret;
 
 	if (!seat->conf->dpms_timeout || !seat->dpms_timer || !seat->foreground)
@@ -501,7 +500,6 @@ static void seat_dpms_reset_timer(struct kmscon_seat *seat)
 	}
 
 	/* Reset the timer */
-	memset(&spec, 0, sizeof(spec));
 	spec.it_value.tv_sec = seat->conf->dpms_timeout;
 	spec.it_value.tv_nsec = 0;
 	ev_timer_update(seat->dpms_timer, &spec);
@@ -683,10 +681,9 @@ int kmscon_seat_new(struct kmscon_seat **out, struct conf_ctx *main_conf,
 	if (!out || !eloop)
 		return -EINVAL;
 
-	seat = malloc(sizeof(*seat));
+	seat = calloc(1, sizeof(*seat));
 	if (!seat)
 		return -ENOMEM;
-	memset(seat, 0, sizeof(*seat));
 	seat->eloop = eloop;
 	dlist_init(&seat->displays);
 	dlist_init(&seat->videos);
@@ -761,14 +758,13 @@ int kmscon_seat_new(struct kmscon_seat **out, struct conf_ctx *main_conf,
 
 	/* Create DPMS timer if timeout is configured */
 	if (seat->conf->dpms_timeout > 0) {
-		struct itimerspec spec;
+		struct itimerspec spec = {0};
 		ret = ev_eloop_new_timer(seat->eloop, &seat->dpms_timer, NULL, seat_dpms_timeout,
 					 seat);
 		if (ret) {
 			log_warning("cannot create DPMS timer: %d", ret);
 		} else {
 			/* Start the timer */
-			memset(&spec, 0, sizeof(spec));
 			spec.it_value.tv_sec = seat->conf->dpms_timeout;
 			ev_timer_update(seat->dpms_timer, &spec);
 		}
@@ -966,11 +962,10 @@ static int kmscon_seat_add_video(struct kmscon_seat *seat, enum uterm_monitor_de
 
 	log_debug("new video device %s on seat %s", node, seat->name);
 
-	vid = malloc(sizeof(*vid));
+	vid = calloc(1, sizeof(*vid));
 	if (!vid)
 		return -ENOMEM;
 
-	memset(vid, 0, sizeof(*vid));
 	vid->seat = seat;
 	vid->udev = udev;
 	vid->drm = (type == UTERM_MONITOR_DRM);
@@ -1082,7 +1077,7 @@ static struct kmscon_session *kmscon_seat_new_session(struct kmscon_seat *seat)
 		return NULL;
 	}
 
-	sess = malloc(sizeof(*sess));
+	sess = calloc(1, sizeof(*sess));
 	if (!sess) {
 		log_error("cannot allocate memory for new session on seat %s", seat->name);
 		return NULL;
@@ -1090,7 +1085,6 @@ static struct kmscon_session *kmscon_seat_new_session(struct kmscon_seat *seat)
 
 	log_debug("register session %p", sess);
 
-	memset(sess, 0, sizeof(*sess));
 	sess->seat = seat;
 	sess->foreground = true;
 	sess->term = terminal_new(sess, uterm_vt_get_num(seat->vt), seat->conf_ctx, seat->eloop,
