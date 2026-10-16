@@ -291,10 +291,10 @@ static int modeset_find_plane(int fd, struct display *disp)
 }
 
 /*
- * When switching from a GUI to kmscon VT, the mouse cursor can stay in the middle of the screen
- * so force disable all cursor planes.
+ * When switching from a GUI to kmscon VT, the mouse cursor and overlay planes can stay in the
+ * middle of the screen so force disable all cursor/overlay planes.
  */
-static void modeset_clear_cursor(drmModeAtomicReq *req, int fd)
+static void modeset_clear_cursor_and_overlays(drmModeAtomicReq *req, int fd)
 {
 	drmModePlaneResPtr plane_res;
 	int i;
@@ -314,15 +314,19 @@ static void modeset_clear_cursor(drmModeAtomicReq *req, int fd)
 		}
 		drmModeObjectPropertiesPtr props =
 			drmModeObjectGetProperties(fd, plane_id, DRM_MODE_OBJECT_PLANE);
-		if (props && get_property_value(fd, props, "type") == DRM_PLANE_TYPE_CURSOR) {
-			uint32_t prop_id = get_property_id(fd, props, "CRTC_ID");
+		if (props) {
+			uint64_t plane_type = get_property_value(fd, props, "type");
+			if (plane_type == DRM_PLANE_TYPE_CURSOR ||
+			    plane_type == DRM_PLANE_TYPE_OVERLAY) {
+				uint32_t prop_id = get_property_id(fd, props, "CRTC_ID");
 
-			if (drmModeAtomicAddProperty(req, plane_id, prop_id, 0) < 0)
-				log_warn("Unable to set CRTC_ID to disable cursor");
+				if (drmModeAtomicAddProperty(req, plane_id, prop_id, 0) < 0)
+					log_warn("Unable to set CRTC_ID to disable cursor/overlay");
 
-			prop_id = get_property_id(fd, props, "FB_ID");
-			if (drmModeAtomicAddProperty(req, plane_id, prop_id, 0) < 0)
-				log_warn("Unable to set FB_ID to disable cursor");
+				prop_id = get_property_id(fd, props, "FB_ID");
+				if (drmModeAtomicAddProperty(req, plane_id, prop_id, 0) < 0)
+					log_warn("Unable to set FB_ID to disable cursor/overlay");
+			}
 		}
 
 		drmModeFreeObjectProperties(props);
@@ -872,7 +876,7 @@ static int perform_modeset(struct video *video)
 	if (!req)
 		return -ENOMEM;
 
-	modeset_clear_cursor(req, vdrm->fd);
+	modeset_clear_cursor_and_overlays(req, vdrm->fd);
 
 	dlist_for_each_entry(disp, &video->displays, list)
 	{
@@ -1574,7 +1578,7 @@ void drm_video_sleep(struct video *video)
 
 		req = drmModeAtomicAlloc();
 		if (req) {
-			modeset_clear_cursor(req, vdrm->fd);
+			modeset_clear_cursor_and_overlays(req, vdrm->fd);
 			if (drmModeAtomicCommit(vdrm->fd, req, 0, NULL) < 0)
 				log_warn("cannot hide hardware cursor before VT switch");
 			drmModeAtomicFree(req);
