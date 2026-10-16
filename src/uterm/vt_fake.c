@@ -103,10 +103,9 @@ struct uterm_vt *uterm_vt_fake_new(struct ev_eloop *eloop, struct input *input)
 	struct uterm_vt *vt;
 	int ret;
 
-	vt = malloc(sizeof(*vt));
+	vt = calloc(1, sizeof(*vt));
 	if (!vt)
 		return NULL;
-	memset(vt, 0, sizeof(*vt));
 	vt->eloop = eloop;
 	vt->input = input;
 	vt->ops = &fake_ops;

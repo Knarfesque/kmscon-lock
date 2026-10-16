@@ -75,10 +75,9 @@ static void mon_new_dev(struct uterm_monitor *mon, unsigned int type, unsigned i
 {
 	struct uterm_monitor_dev *dev;
 
-	dev = malloc(sizeof(*dev));
+	dev = calloc(1, sizeof(*dev));
 	if (!dev)
 		return;
-	memset(dev, 0, sizeof(*dev));
 	dev->type = type;
 	dev->flags = flags;
 	dev->mon = mon;
@@ -283,11 +282,10 @@ struct uterm_drm_version {
 
 static inline char *get_drm_name(int fd)
 {
-	struct uterm_drm_version v;
+	struct uterm_drm_version v = {0};
 	unsigned int len;
 	int ret;
 
-	memset(&v, 0, sizeof(v));
 	ret = ioctl(fd, UTERM_DRM_IOCTL_VERSION, &v);
 	if (ret < 0)
 		return NULL;
@@ -511,10 +509,9 @@ int uterm_monitor_new(struct uterm_monitor **out, struct ev_eloop *eloop,
 	if (!out || !eloop || !cb)
 		return -EINVAL;
 
-	mon = malloc(sizeof(*mon));
+	mon = calloc(1, sizeof(*mon));
 	if (!mon)
 		return -EINVAL;
-	memset(mon, 0, sizeof(*mon));
 	mon->ref = 1;
 	mon->eloop = eloop;
 	mon->cb = *cb;

@@ -329,10 +329,9 @@ struct uterm_vt *uterm_vt_libseat_new(struct ev_eloop *eloop, struct input *inpu
 	int libseat_fd;
 	int ret;
 
-	vt = malloc(sizeof(*vt));
+	vt = calloc(1, sizeof(*vt));
 	if (!vt)
 		return NULL;
-	memset(vt, 0, sizeof(*vt));
 	vt->base.eloop = eloop;
 	vt->base.input = input;
 	vt->base.ops = &vt_libseat_ops;

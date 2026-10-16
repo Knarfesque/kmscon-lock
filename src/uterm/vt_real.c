@@ -59,6 +59,7 @@
 #include <linux/major.h>
 #include <linux/vt.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
@@ -224,15 +225,13 @@ static int real_restore(struct uterm_vt *base)
 {
 	struct uterm_vt_real *vt = to_real(base);
 	int ret;
-	struct vt_mode mode;
+	struct vt_mode mode = {0};
 
 	if (ioctl(vt->real_fd, KDSETMODE, KD_GRAPHICS)) {
 		log_err("cannot put VT in graphics mode (%d): %m", errno);
 		ret = -errno;
 		return ret;
 	}
-
-	memset(&mode, 0, sizeof(mode));
 	mode.mode = VT_PROCESS;
 	mode.acqsig = SIGUSR1;
 	mode.relsig = SIGUSR2;
@@ -258,7 +257,7 @@ static int real_restore(struct uterm_vt *base)
 
 static int real_open(struct uterm_vt_real *vt, const char *vt_name)
 {
-	struct vt_mode mode;
+	struct vt_mode mode = {0};
 	struct vt_stat vts;
 	int ret, err;
 
@@ -290,7 +289,6 @@ static int real_open(struct uterm_vt_real *vt, const char *vt_name)
 		goto err_eloop;
 	}
 
-	memset(&mode, 0, sizeof(mode));
 	mode.mode = VT_PROCESS;
 	mode.acqsig = SIGUSR1;
 	mode.relsig = SIGUSR2;
@@ -361,7 +359,7 @@ err_fd:
 
 static void real_close(struct uterm_vt_real *vt)
 {
-	struct vt_mode mode;
+	struct vt_mode mode = {0};
 	int ret;
 
 	log_debug("closing VT %d", vt->real_num);
@@ -379,7 +377,6 @@ static void real_close(struct uterm_vt_real *vt)
 	if (ret && !vt->base.hup)
 		log_error("cannot reset VT KBMODE to %d (%d): %m", vt->real_kbmode, errno);
 
-	memset(&mode, 0, sizeof(mode));
 	mode.mode = VT_AUTO;
 	ret = ioctl(vt->real_fd, VT_SETMODE, &mode);
 	if (ret && !vt->base.hup)
@@ -662,10 +659,9 @@ struct uterm_vt *uterm_vt_real_new(struct ev_eloop *eloop, struct input *input, 
 		vt_name = vt_path;
 	}
 
-	vt = malloc(sizeof(*vt));
+	vt = calloc(1, sizeof(*vt));
 	if (!vt)
 		return NULL;
-	memset(vt, 0, sizeof(*vt));
 	vt->base.eloop = eloop;
 	vt->base.input = input;
 	vt->base.ops = &real_ops;
