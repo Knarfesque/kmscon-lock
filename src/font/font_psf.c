@@ -153,7 +153,7 @@ static int kmscon_font_psf_init(struct kmscon_font *out, const char *name,
 		goto err_file;
 	}
 
-	font = malloc(sizeof(*font) + step * glyphs);
+	font = calloc(1, sizeof(*font) + step * glyphs);
 	if (!font) {
 		log_error("failed allocate font data");
 		goto err_file;

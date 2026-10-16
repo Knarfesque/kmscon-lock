@@ -222,10 +222,9 @@ static int kmscon_font_freetype_init(struct kmscon_font *out, const char *name, 
 	FT_Error err;
 	unsigned int bold_width, bold_height;
 
-	ftf = malloc(sizeof(*ftf));
+	ftf = calloc(1, sizeof(*ftf));
 	if (!ftf)
 		return -ENOMEM;
-	memset(ftf, 0, sizeof(*ftf));
 
 	err = FT_Init_FreeType(&ftf->ft);
 	if (err != 0) {
@@ -406,12 +405,11 @@ static struct kmscon_glyph *render_glyph(struct kmscon_font *font, FT_Face face,
 	}
 
 	cwidth = glyph_is_wide(face->glyph, font->width) ? 2 : cwidth;
-	glyph = malloc(sizeof(*glyph) + cwidth * font->width * font->height);
+	glyph = calloc(1, sizeof(*glyph) + cwidth * font->width * font->height);
 	if (!glyph) {
 		log_error("cannot allocate memory for new glyph");
 		return NULL;
 	}
-	memset(glyph, 0, sizeof(*glyph) + cwidth * font->width * font->height);
 
 	glyph->double_width = cwidth == 2;
 	glyph->buf.width = font->width * cwidth;

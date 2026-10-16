@@ -134,7 +134,7 @@ static struct unifont_glyph_block *gen_blocks(struct unifont_glyph *list, uint32
 	int table_size = 256;
 	uint32_t offset = 0;
 
-	blocks = malloc(table_size * sizeof(*blocks));
+	blocks = calloc(table_size, sizeof(*blocks));
 	if (!blocks) {
 		fprintf(stderr, "genunifont: out of memory\n");
 		return NULL;
@@ -190,7 +190,7 @@ static void pack_glyph(struct unifont_glyph *list, FILE *out)
 	for (g = list; g; g = g->next)
 		size += g->len / 2;
 
-	buf = malloc(size);
+	buf = calloc(1, size);
 	if (!buf) {
 		free(blocks);
 		return;
@@ -268,12 +268,11 @@ static int parse_single_file(FILE *out, FILE *in)
 			continue;
 
 		/* allocate new glyph */
-		g = malloc(sizeof(*g));
+		g = calloc(1, sizeof(*g));
 		if (!g) {
 			fprintf(stderr, "genunifont: out of memory\n");
 			return -ENOMEM;
 		}
-		memset(g, 0, sizeof(*g));
 
 		/* read glyph data */
 		ret = build_unifont_glyph(g, buf);

@@ -209,7 +209,7 @@ int kmscon_font_find(struct kmscon_font **out, const char *name, unsigned int he
 
 	log_debug("[%s] searching font %s, size %u", backend, name, height);
 
-	font = malloc(sizeof(*font));
+	font = calloc(1, sizeof(*font));
 	if (!font) {
 		log_error("cannot allocate memory for new font");
 		return -ENOMEM;

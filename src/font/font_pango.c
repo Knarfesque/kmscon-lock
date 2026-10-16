@@ -168,12 +168,11 @@ static struct kmscon_glyph *get_glyph(struct kmscon_font *font, struct face *fac
 	if (logical_rec.x + logical_rec.width > rec.x + font->width)
 		cwidth = 2;
 
-	glyph = malloc(sizeof(*glyph) + cwidth * font->width * font->height);
+	glyph = calloc(1, sizeof(*glyph) + cwidth * font->width * font->height);
 	if (!glyph) {
 		log_error("cannot allocate memory for new glyph");
 		goto out_unlock;
 	}
-	memset(glyph, 0, sizeof(*glyph) + cwidth * font->width * font->height);
 
 	glyph->double_width = cwidth == 2;
 	glyph->buf.width = font->width * cwidth;
@@ -262,13 +261,12 @@ static int manager_get_face(struct face **out, struct kmscon_font *font, const c
 	if (ret)
 		goto out_unlock;
 
-	face = malloc(sizeof(*face));
+	face = calloc(1, sizeof(*face));
 	if (!face) {
 		log_error("cannot allocate memory for new face");
 		ret = -ENOMEM;
 		goto err_manager;
 	}
-	memset(face, 0, sizeof(*face));
 
 	face->ctx = pango_font_map_create_context(manager__lib);
 	pango_context_set_base_dir(face->ctx, PANGO_DIRECTION_LTR);

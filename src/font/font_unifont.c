@@ -124,10 +124,10 @@ static struct kmscon_glyph *new_glyph(struct kmscon_font *font, const struct kms
 	int off = 0;
 
 	scale = font->height / 16;
-	g = malloc(sizeof(*g) + cwidth * font->width * font->height);
+	g = calloc(1, sizeof(*g) + cwidth * font->width * font->height);
 	if (!g)
 		return NULL;
-	memset(g, 0, sizeof(*g));
+
 	g->double_width = (cwidth == 2);
 	g->buf.width = cwidth * font->width;
 	g->buf.height = font->height;
