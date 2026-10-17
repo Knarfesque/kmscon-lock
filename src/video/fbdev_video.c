@@ -145,7 +145,7 @@ static int display_activate_force(struct display *disp, bool force)
 
 	ret = refresh_info(disp);
 	if (ret)
-		goto err_close;
+		return ret;
 
 	finfo = &dfb->finfo;
 	vinfo = &dfb->vinfo;
@@ -178,7 +178,7 @@ static int display_activate_force(struct display *disp, bool force)
 		ret = ioctl(dfb->fd, FBIOPUT_VSCREENINFO, vinfo);
 		if (ret) {
 			log_debug("cannot reset fb offsets (%d): %m", errno);
-			goto err_close;
+			return ret;
 		}
 	}
 
@@ -189,7 +189,7 @@ static int display_activate_force(struct display *disp, bool force)
 
 	ret = refresh_info(disp);
 	if (ret)
-		goto err_close;
+		return ret;
 
 	/* We require TRUECOLOR mode here. That is, each pixel has a color value
 	 * that is split into rgba values that we can set directly. Other visual
@@ -212,7 +212,7 @@ static int display_activate_force(struct display *disp, bool force)
 
 			ret = refresh_info(disp);
 			if (ret)
-				goto err_close;
+				return ret;
 
 			if (finfo->visual == FB_VISUAL_TRUECOLOR)
 				break;
@@ -223,8 +223,7 @@ static int display_activate_force(struct display *disp, bool force)
 	    vinfo->bits_per_pixel != 16) {
 		log_error("device %s does not support 16/32 bpp but: %u", dfb->finfo.id,
 			  vinfo->bits_per_pixel);
-		ret = -EFAULT;
-		goto err_close;
+		return -EFAULT;
 	}
 
 	if (vinfo->xres_virtual < vinfo->xres ||
@@ -236,14 +235,12 @@ static int display_activate_force(struct display *disp, bool force)
 
 	if (finfo->visual != FB_VISUAL_TRUECOLOR) {
 		log_error("device %s does not support true-color", dfb->finfo.id);
-		ret = -EFAULT;
-		goto err_close;
+		return -EFAULT;
 	}
 
 	if (vinfo->red.length > 8 || vinfo->green.length > 8 || vinfo->blue.length > 8) {
 		log_error("device %s uses unusual color-ranges", dfb->finfo.id);
-		ret = -EFAULT;
-		goto err_close;
+		return -EFAULT;
 	}
 
 	log_info("activating display %s to %ux%u %u bpp", dfb->finfo.id, vinfo->xres, vinfo->yres,
@@ -280,8 +277,7 @@ static int display_activate_force(struct display *disp, bool force)
 	dfb->map = mmap(0, len, PROT_READ | PROT_WRITE, MAP_SHARED, dfb->fd, 0);
 	if (dfb->map == MAP_FAILED) {
 		log_error("cannot mmap device %s (%d): %m", dfb->finfo.id, errno);
-		ret = -EFAULT;
-		goto err_close;
+		return -EFAULT;
 	}
 
 	memset(dfb->map, 0, len);
@@ -319,10 +315,6 @@ static int display_activate_force(struct display *disp, bool force)
 
 	disp->flags |= DISPLAY_ONLINE;
 	return 0;
-
-err_close:
-	close(dfb->fd);
-	return ret;
 }
 
 static void display_deactivate_force(struct display *disp, bool force)
@@ -334,7 +326,6 @@ static void display_deactivate_force(struct display *disp, bool force)
 	if (dfb->map) {
 		memset(dfb->map, 0, dfb->len);
 		munmap(dfb->map, dfb->len);
-		close(dfb->fd);
 		dfb->map = NULL;
 	}
 	if (!force) {
