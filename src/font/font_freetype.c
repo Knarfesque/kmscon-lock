@@ -149,7 +149,8 @@ static int bitmap_font_select_size(FT_Face face, int height)
 
 static FT_Error request_size(FT_Face face, unsigned int height)
 {
-	FT_Size_RequestRec request = {FT_SIZE_REQUEST_TYPE_CELL, 0, height << 6, 0, 0};
+	// Request a size of half a pixel less, as freetype draws some characters with 1px more.
+	FT_Size_RequestRec request = {FT_SIZE_REQUEST_TYPE_CELL, 0, (height << 6) - 32, 0, 0};
 	FT_Error ret;
 
 	ret = FT_Request_Size(face, &request);
