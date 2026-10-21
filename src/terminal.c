@@ -1256,14 +1256,32 @@ static void rm_all_screens(struct kmscon_terminal *term)
 	term->rows = 0;
 }
 
-static void kmscon_issue_write(struct kmscon_terminal *term)
+static void get_pty_str(struct kmscon_terminal *term, char *buf, size_t buflen)
 {
 	char pty_name[128] = {0};
+	const char *short_pty_name;
+	const char *prefix = "/dev/";
+
+	kmscon_pty_get_slave_name(term->pty, pty_name, sizeof(pty_name));
+	short_pty_name = shl_strip_prefix(prefix, pty_name);
+
+	if (term->conf->vt)
+		snprintf(buf, buflen, "%s (%s)", short_pty_name,
+			 shl_strip_prefix(prefix, term->conf->vt));
+	else
+		strncpy(buf, short_pty_name, buflen);
+}
+
+static void kmscon_issue_write(struct kmscon_terminal *term)
+{
+
+	char pty_str[128] = {0};
 	char *issue;
 	size_t issue_len;
 
-	kmscon_pty_get_slave_name(term->pty, pty_name, sizeof(pty_name));
-	issue = kmscon_issue_get_buffer(term->conf->issue_path, pty_name, &issue_len);
+	get_pty_str(term, pty_str, sizeof(pty_str));
+
+	issue = kmscon_issue_get_buffer(term->conf->issue_path, pty_str, &issue_len);
 	if (!issue || !issue_len)
 		return;
 
