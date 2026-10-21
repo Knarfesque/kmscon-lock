@@ -107,14 +107,24 @@ err_pattern:
 	return ret;
 }
 
+static int load_and_render(FT_Face face, FT_UInt index)
+{
+	if (FT_Load_Glyph(face, index, FT_LOAD_TARGET_LIGHT)) {
+		log_err("Failed to load glyph index %d", index);
+		return -EINVAL;
+	}
+	if (FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL)) {
+		log_err("Failed to render glyph index %d", index);
+		return -EINVAL;
+	}
+	return 0;
+}
+
 static unsigned int font_get_width(FT_Face face)
 {
-	FT_UInt glyph_index = FT_Get_Char_Index(face, 'M');
+	FT_UInt index = FT_Get_Char_Index(face, 'M');
 
-	if (FT_Load_Glyph(face, glyph_index, FT_LOAD_TARGET_LIGHT))
-		return 0;
-
-	if (FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL))
+	if (load_and_render(face, index))
 		return 0;
 
 	return face->glyph->advance.x >> 6;
@@ -137,6 +147,17 @@ static int bitmap_font_select_size(FT_Face face, int height)
 	return best;
 }
 
+static FT_Error request_size(FT_Face face, unsigned int height)
+{
+	FT_Size_RequestRec request = {FT_SIZE_REQUEST_TYPE_CELL, 0, height << 6, 0, 0};
+	FT_Error ret;
+
+	ret = FT_Request_Size(face, &request);
+	if (ret)
+		log_warn("Freetype failed to set size to %d, error %d", height, ret);
+	return ret;
+}
+
 static void compute_font_size(struct ft_font *ftfont, unsigned int query_height,
 			      unsigned int *width, unsigned int *height)
 {
@@ -151,14 +172,8 @@ static void compute_font_size(struct ft_font *ftfont, unsigned int query_height,
 		*height = face->available_sizes[bitmap_index].height;
 		log_debug("bitmap font size %dx%d", *width, *height);
 	} else {
-		FT_Size_RequestRec request = {FT_SIZE_REQUEST_TYPE_CELL, 0, query_height << 6, 0,
-					      0};
-		if (FT_Request_Size(face, &request)) {
-			log_warn("Freetype failed to set size to %d", query_height);
-			*width = 0;
-			*height = 0;
+		if (request_size(face, query_height))
 			return;
-		}
 		*width = font_get_width(face);
 		*height = (face->size->metrics.height >> 6);
 	}
@@ -394,15 +409,8 @@ static struct kmscon_glyph *render_glyph(struct kmscon_font *font, FT_Face face,
 	if (!cwidth)
 		return NULL;
 
-	if (FT_Load_Glyph(face, index, FT_LOAD_TARGET_LIGHT)) {
-		log_err("Failed to load glyph\n");
+	if (load_and_render(face, index))
 		return NULL;
-	}
-
-	if (FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL)) {
-		log_err("Failed to render glyph\n");
-		return NULL;
-	}
 
 	cwidth = glyph_is_wide(face->glyph, font->width) ? 2 : cwidth;
 	glyph = calloc(1, sizeof(*glyph) + cwidth * font->width * font->height);
@@ -437,8 +445,7 @@ static void select_font_size(struct kmscon_font *font, FT_Face face)
 	}
 	/* scale down to a size that fits the glyph height */
 	do {
-		FT_Size_RequestRec request = {FT_SIZE_REQUEST_TYPE_CELL, 0, height << 6, 0, 0};
-		if (FT_Request_Size(face, &request)) {
+		if (request_size(face, height)) {
 			log_warn("failed to set size to %d", height);
 			return;
 		}
