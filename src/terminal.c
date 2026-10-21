@@ -1192,6 +1192,9 @@ static void pointer_event(struct input *input, struct input_pointer_event *ev, v
 {
 	struct kmscon_terminal *term = data;
 
+	if (!term->opened || !term->awake || !kmscon_session_get_foreground(term->session))
+		return;
+
 	if (ev->event == POINTER_MOVED) {
 		term->pointer.x = ev->pointer_x;
 		term->pointer.y = ev->pointer_y;
