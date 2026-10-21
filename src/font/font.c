@@ -281,6 +281,12 @@ struct kmscon_glyph *kmscon_font_render(struct kmscon_font *font, struct kmscon_
 	if (!font)
 		return NULL;
 
+	if (kmscon_font_blocks_has_glyph(ch)) {
+		glyph = kmscon_font_blocks_render(font, ch);
+		if (glyph)
+			return glyph;
+	}
+
 	glyph = font->ops->render(font, attr, ch);
 	if (!glyph)
 		glyph = font->ops->render(font, attr, FONT_REPLACEMENT_CHAR);
@@ -304,6 +310,9 @@ bool kmscon_font_has_glyph(struct kmscon_font *font, struct kmscon_font_attr *at
 {
 	if (!font)
 		return false;
+
+	if (kmscon_font_blocks_has_glyph(ch))
+		return true;
 
 	return font->ops->has_glyph(font, attr, ch);
 }

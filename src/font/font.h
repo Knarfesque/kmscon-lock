@@ -47,8 +47,7 @@ struct kmscon_font_ops;
 #define KMSCON_FONT_DEFAULT_PPI 72
 
 #define FONT_REPLACEMENT_CHAR 0x25a1
-#define FONT_FULL_BLOCK 0x2588 // Full Block
-#define FONT_VBAR 0x258f       // Left One Eighth Block
+#define FONT_VBAR 0x258f // Left One Eighth Block
 
 struct kmscon_font_attr {
 	bool bold;
@@ -102,6 +101,11 @@ void kmscon_font_unref(struct kmscon_font *font);
 struct kmscon_glyph *kmscon_font_render(struct kmscon_font *font, struct kmscon_font_attr *attr,
 					uint32_t ch);
 bool kmscon_font_has_glyph(struct kmscon_font *font, struct kmscon_font_attr *attr, uint32_t ch);
+
+/* block elements, drawn without the font backend */
+
+bool kmscon_font_blocks_has_glyph(uint32_t ch);
+struct kmscon_glyph *kmscon_font_blocks_render(struct kmscon_font *font, uint32_t ch);
 
 /* modularized backends */
 

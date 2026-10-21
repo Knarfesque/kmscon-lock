@@ -1,6 +1,7 @@
 
 font_srcs = [
     'font.c',
+    'blocks.c',
     'font_8x16.c',
     embed_gen.process('font_8x16.data'),
 ]

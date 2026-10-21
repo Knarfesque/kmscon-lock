@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../src/font/blocks.c"	       /* block elements, called by font.c */
 #include "../src/font/font.c"	       /* real dispatch: register / find / render */
 #undef LOG_SUBSYSTEM		       /* font.c and font_freetype.c both define it */
 #include "../src/font/font_freetype.c" /* backend ops + ft_data layout */
