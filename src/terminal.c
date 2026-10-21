@@ -554,10 +554,16 @@ static int font_set(struct kmscon_terminal *term, unsigned int new_size)
 	int ret;
 	struct kmscon_font *font;
 
+retry:
 	ret = kmscon_font_find(&font, term->conf->font_name, new_size, term->conf->font_engine);
-	if (ret)
+	if (ret) {
+		/* if it fails due to incorrect size, retry with 16px */
+		if (!term->font) {
+			new_size = 16;
+			goto retry;
+		}
 		return ret;
-
+	}
 	kmscon_font_unref(term->font);
 	term->font = font;
 	term->font_size = new_size;
