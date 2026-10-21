@@ -122,12 +122,12 @@ static int load_and_render(FT_Face face, FT_UInt index)
 
 static unsigned int font_get_width(FT_Face face)
 {
-	FT_UInt index = FT_Get_Char_Index(face, 'M');
+	FT_UInt index = FT_Get_Char_Index(face, 'W');
 
 	if (load_and_render(face, index))
 		return 0;
 
-	return face->glyph->advance.x >> 6;
+	return max(face->glyph->advance.x >> 6, face->glyph->bitmap.width);
 }
 
 static int bitmap_font_select_size(FT_Face face, int height)
