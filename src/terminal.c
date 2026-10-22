@@ -742,14 +742,12 @@ static bool terminal_update_size(struct kmscon_terminal *term)
 	if (term->auto_font_size) {
 		unsigned int new_font_size = terminal_get_auto_font_size(term);
 
-		if (new_font_size != term->font_size) {
+		if (new_font_size != term->font_size)
 			font_set(term, new_font_size);
-			font_update_all(term);
-		}
-	} else if (!term->font) {
+	} else if (!term->font)
 		font_set(term, term->font_size);
-		font_update_all(term);
-	}
+
+	font_update_all(term);
 
 	if (term->conf->multi_monitor && !strcmp(term->conf->multi_monitor, "largest")) {
 		terminal_update_size_largest(term);
