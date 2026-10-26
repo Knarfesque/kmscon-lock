@@ -48,7 +48,8 @@
 struct kmscon_pty;
 
 typedef void (*kmscon_pty_input_cb)(struct kmscon_pty *pty, const char *u8, size_t len, void *data);
-typedef void (*kmscon_pty_exit_cb)(struct kmscon_pty *pty, bool restart, void *data);
+/* status is the raw wait status of the child, as returned by waitpid() */
+typedef void (*kmscon_pty_exit_cb)(struct kmscon_pty *pty, bool restart, int status, void *data);
 
 int kmscon_pty_new(struct kmscon_pty **out, kmscon_pty_input_cb input_cb,
 		   kmscon_pty_exit_cb exit_cb, void *data);

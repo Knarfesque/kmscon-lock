@@ -1409,7 +1409,7 @@ static void pty_input(struct kmscon_pty *pty, const char *u8, size_t len, void *
 	}
 }
 
-static void pty_exit(struct kmscon_pty *pty, bool restart, void *data)
+static void pty_exit(struct kmscon_pty *pty, bool restart, int status, void *data)
 {
 	struct kmscon_terminal *term = data;
 

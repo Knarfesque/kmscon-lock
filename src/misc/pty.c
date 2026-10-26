@@ -488,12 +488,12 @@ static void sig_child(struct ev_eloop *eloop, struct ev_child_data *chld, void *
 	if (pty->retry_count == MAX_RETRY_COUNT) {
 		log_err("reached max retry attempts for login process %d retries in %d seconds",
 			MAX_RETRY_COUNT, MAX_RETRY_TIME);
-		pty->exit_cb(pty, false, pty->data);
+		pty->exit_cb(pty, false, chld->status, pty->data);
 		return;
 	}
 	if (pty->oneshot) {
 		log_info("oneshot is enabled, exiting kmscon...");
-		pty->exit_cb(pty, false, pty->data);
+		pty->exit_cb(pty, false, chld->status, pty->data);
 		return;
 	}
 
@@ -505,7 +505,7 @@ static void sig_child(struct ev_eloop *eloop, struct ev_child_data *chld, void *
 	} else {
 		pty->retry_count = 0;
 	}
-	pty->exit_cb(pty, true, pty->data);
+	pty->exit_cb(pty, true, chld->status, pty->data);
 }
 
 int kmscon_pty_open(struct kmscon_pty *pty, unsigned short width, unsigned short height, bool drm)
