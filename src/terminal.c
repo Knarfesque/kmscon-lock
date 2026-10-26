@@ -118,7 +118,7 @@ struct kmscon_terminal {
 
 	/* Set on lock terminals only, which run the unlock helper instead of the
 	 * login process: the terminal hidden behind this one. It starts with its
-	 * zoom. */
+	 * zoom and rotation, and follows the changes made while locked. */
 	struct kmscon_terminal *follower;
 	struct ev_timer *respawn_timer;
 };
@@ -793,6 +793,50 @@ static void terminal_update_size_notify(struct kmscon_terminal *term)
 	update_pointer_max_all(term);
 }
 
+static struct screen *find_screen(struct kmscon_terminal *term, struct display *disp)
+{
+	struct screen *scr;
+
+	dlist_for_each_entry(scr, &term->screens, list)
+	{
+		if (scr->disp == disp)
+			return scr;
+	}
+	return NULL;
+}
+
+static void sync_follower(struct kmscon_terminal *term)
+{
+	struct kmscon_terminal *follower = term->follower;
+	struct screen *scr, *fscr;
+	enum Orientation orientation;
+
+	if (!follower || !term->font)
+		return;
+
+	follower->auto_font_size = term->auto_font_size;
+	if (follower->font != term->font) {
+		kmscon_font_ref(term->font);
+		kmscon_font_unref(follower->font);
+		follower->font = term->font;
+		follower->font_size = term->font_size;
+		font_update_all(follower);
+	}
+
+	dlist_for_each_entry(fscr, &follower->screens, list)
+	{
+		scr = find_screen(term, fscr->disp);
+		if (!scr)
+			continue;
+		orientation = kmscon_text_get_orientation(scr->txt);
+		if (orientation != kmscon_text_get_orientation(fscr->txt)) {
+			kmscon_text_rotate(fscr->txt, orientation);
+			refresh_hw_cursor(fscr);
+		}
+	}
+	terminal_update_size_notify(follower);
+}
+
 static void rotate_cw_screen(struct screen *scr)
 {
 	unsigned int orientation = kmscon_text_get_orientation(scr->txt);
@@ -810,6 +854,7 @@ static void rotate_cw_all(struct kmscon_terminal *term)
 		rotate_cw_screen(scr);
 	}
 	terminal_update_size_notify(term);
+	sync_follower(term);
 }
 
 static void rotate_ccw_screen(struct screen *scr)
@@ -832,20 +877,18 @@ static void rotate_ccw_all(struct kmscon_terminal *term)
 		rotate_ccw_screen(scr);
 	}
 	terminal_update_size_notify(term);
+	sync_follower(term);
 }
 
 int terminal_add_display(struct kmscon_terminal *term, struct display *disp)
 {
-	struct screen *scr;
+	struct screen *scr, *fscr;
 	const char *be, *gpu, *connector;
 	enum Orientation orientation;
 	int ret;
 
-	dlist_for_each_entry(scr, &term->screens, list)
-	{
-		if (scr->disp == disp)
-			return 0;
-	}
+	if (find_screen(term, disp))
+		return 0;
 
 	scr = calloc(1, sizeof(*scr));
 	if (!scr) {
@@ -860,6 +903,11 @@ int terminal_add_display(struct kmscon_terminal *term, struct display *disp)
 	connector = display_name(disp);
 
 	config_get_screen(term->conf, gpu, connector, &orientation, &scr->config_enabled);
+
+	/* A lock terminal is shown with the rotation of the terminal it hides */
+	fscr = term->follower ? find_screen(term->follower, disp) : NULL;
+	if (fscr)
+		orientation = kmscon_text_get_orientation(fscr->txt);
 
 	ret = display_register_pageflip(scr->disp, display_pageflip, scr);
 	if (ret) {
@@ -924,13 +972,10 @@ void terminal_rm_display(struct kmscon_terminal *term, struct display *disp)
 {
 	struct screen *scr;
 
-	dlist_for_each_entry(scr, &term->screens, list)
-	{
-		if (scr->disp == disp) {
-			log_debug("removed display %s from terminal %p", display_name(disp), term);
-			free_screen(scr, true);
-			return;
-		}
+	scr = find_screen(term, disp);
+	if (scr) {
+		log_debug("removed display %s from terminal %p", display_name(disp), term);
+		free_screen(scr, true);
 	}
 }
 
@@ -939,6 +984,8 @@ static void zoom_in(struct kmscon_terminal *term)
 	unsigned int new_size;
 
 	term->auto_font_size = false; // don't auto-adjust font size anymore
+	if (term->follower)
+		term->follower->auto_font_size = false;
 
 	if (term->font_size > 150 || !term->font_size) // don't allow zoom in beyond 150
 		return;
@@ -948,6 +995,7 @@ static void zoom_in(struct kmscon_terminal *term)
 		return;
 	font_update_all(term);
 	terminal_update_size_notify(term);
+	sync_follower(term);
 }
 
 static void zoom_out(struct kmscon_terminal *term)
@@ -955,6 +1003,8 @@ static void zoom_out(struct kmscon_terminal *term)
 	unsigned int new_size;
 
 	term->auto_font_size = false; // don't auto-adjust font size anymore
+	if (term->follower)
+		term->follower->auto_font_size = false;
 
 	if (term->font_size <= term->font->increase_step)
 		return;
@@ -965,6 +1015,7 @@ static void zoom_out(struct kmscon_terminal *term)
 		return;
 	font_update_all(term);
 	terminal_update_size_notify(term);
+	sync_follower(term);
 }
 
 static void input_event(struct input *input, struct input_key_event *ev, void *data)
