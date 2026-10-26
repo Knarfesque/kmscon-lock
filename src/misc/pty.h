@@ -73,5 +73,6 @@ void kmscon_pty_signal(struct kmscon_pty *pty, int signum);
 void kmscon_pty_resize(struct kmscon_pty *pty, unsigned short width, unsigned short height);
 
 int kmscon_pty_get_slave_name(struct kmscon_pty *pty, char *buf, size_t len);
+int kmscon_pty_get_owner(struct kmscon_pty *pty, uid_t *uid);
 
 #endif /* KMSCON_PTY_H */

@@ -32,6 +32,7 @@
 #include <pwd.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -746,6 +747,97 @@ int kmscon_pty_get_slave_name(struct kmscon_pty *pty, char *buf, size_t len)
 		return -EINVAL;
 
 	return ptsname_r(pty->fd, buf, len);
+}
+
+static int proc_get_uid(pid_t pid, uid_t *uid)
+{
+	char path[64], line[256];
+	unsigned int val;
+	FILE *f;
+	int ret = -ENOENT;
+
+	snprintf(path, sizeof(path), "/proc/%d/status", pid);
+	f = fopen(path, "re");
+	if (!f)
+		return -errno;
+
+	while (fgets(line, sizeof(line), f)) {
+		if (sscanf(line, "Uid: %u", &val) == 1) {
+			*uid = val;
+			ret = 0;
+			break;
+		}
+	}
+	fclose(f);
+	return ret;
+}
+
+/* First child of @pid, or 0 if it has none. The kernel lists the children
+ * of a thread in /proc/<pid>/task/<tid>/children; login is single-threaded. */
+static pid_t proc_find_child(pid_t pid)
+{
+	static bool warned;
+	char path[64];
+	FILE *f;
+	int child, err;
+
+	snprintf(path, sizeof(path), "/proc/%d/task/%d/children", pid, pid);
+	f = fopen(path, "re");
+	if (!f) {
+		err = errno;
+		/* Without CONFIG_PROC_CHILDREN nobody is ever seen as logged in. The
+		 * file is also missing if @pid just exited, so check the task exists. */
+		snprintf(path, sizeof(path), "/proc/%d/task/%d", pid, pid);
+		if (err == ENOENT && !warned && !access(path, F_OK)) {
+			log_warn("%s/children does not exist, the kernel lacks "
+				 "CONFIG_PROC_CHILDREN: terminals cannot be locked",
+				 path);
+			warned = true;
+		}
+		return 0;
+	}
+	if (fscanf(f, "%d", &child) != 1)
+		child = 0;
+	fclose(f);
+	return child;
+}
+
+static bool login_forks(struct kmscon_pty *pty)
+{
+	char path[64], comm[16];
+	bool ret = false;
+	FILE *f;
+
+	/* Not argv[0]: a wrapper script may exec login, as NixOS does */
+	snprintf(path, sizeof(path), "/proc/%d/comm", pty->child);
+	f = fopen(path, "re");
+	if (!f)
+		return false;
+	if (fgets(comm, sizeof(comm), f))
+		ret = !strcmp(comm, "login\n");
+	fclose(f);
+	return ret;
+}
+
+/* login (util-linux and shadow) runs the user's shell in a child once logged
+ * in. Other programs count as logged in as soon as they run. */
+int kmscon_pty_get_owner(struct kmscon_pty *pty, uid_t *uid)
+{
+	pid_t pid;
+
+	if (!pty || !uid)
+		return -EINVAL;
+	if (!pty_is_open(pty) || pty->child <= 0)
+		return -ENOENT;
+
+	pid = pty->child;
+	if (login_forks(pty)) {
+		pid = proc_find_child(pty->child);
+		if (!pid)
+			return -ENOENT;
+	}
+
+	return proc_get_uid(pid, uid);
 }
 
 void kmscon_pty_resize(struct kmscon_pty *pty, unsigned short width, unsigned short height)
