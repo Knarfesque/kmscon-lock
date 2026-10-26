@@ -77,6 +77,8 @@ struct kmscon_pty {
 	bool env_reset;
 	bool backspace_delete;
 	bool oneshot;
+	/* when false, the pty's owner restarts the child itself */
+	bool respawn_limit;
 
 	/* when user is set, the child runs as this user */
 	uid_t uid;
@@ -162,7 +164,7 @@ void kmscon_pty_unref(struct kmscon_pty *pty)
 
 int kmscon_pty_set_conf(struct kmscon_pty *pty, const char *term, const char *colorterm,
 			char **argv, const char *seat, unsigned int vtnr, bool do_reset,
-			bool backspace, bool oneshot)
+			bool backspace, bool oneshot, bool respawn_limit)
 {
 	char *vt;
 
@@ -172,6 +174,7 @@ int kmscon_pty_set_conf(struct kmscon_pty *pty, const char *term, const char *co
 	pty->env_reset = do_reset;
 	pty->backspace_delete = backspace;
 	pty->oneshot = oneshot;
+	pty->respawn_limit = respawn_limit;
 
 	if (term) {
 		pty->term = strdup(term);
@@ -616,6 +619,11 @@ static void sig_child(struct ev_eloop *eloop, struct ev_child_data *chld, void *
 
 	log_info("child exited: pid: %u status: %d", chld->pid, chld->status);
 
+	if (!pty->respawn_limit) {
+		pty->exit_cb(pty, true, chld->status, pty->data);
+		return;
+	}
+
 	if (pty->retry_count == MAX_RETRY_COUNT) {
 		log_err("reached max retry attempts for login process %d retries in %d seconds",
 			MAX_RETRY_COUNT, MAX_RETRY_TIME);
@@ -739,6 +747,17 @@ void kmscon_pty_signal(struct kmscon_pty *pty, int signum)
 	}
 
 	log_debug("send signal %d to child", signum);
+}
+
+/* kmscon_pty_signal() cannot do this: the kernel only forwards SIGINT, SIGQUIT
+ * and SIGTSTP through TIOCSIG */
+void kmscon_pty_kill(struct kmscon_pty *pty, int signum)
+{
+	if (!pty || !pty_is_open(pty) || pty->child <= 0)
+		return;
+
+	if (kill(pty->child, signum) < 0)
+		log_warn("cannot send signal %d to child %d: %m", signum, pty->child);
 }
 
 int kmscon_pty_get_slave_name(struct kmscon_pty *pty, char *buf, size_t len)

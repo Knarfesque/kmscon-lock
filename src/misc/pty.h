@@ -58,7 +58,7 @@ void kmscon_pty_ref(struct kmscon_pty *pty);
 void kmscon_pty_unref(struct kmscon_pty *pty);
 int kmscon_pty_set_conf(struct kmscon_pty *pty, const char *term, const char *colorterm,
 			char **argv, const char *seat, unsigned int vtnr, bool do_reset,
-			bool backspace, bool oneshot);
+			bool backspace, bool oneshot, bool respawn_limit);
 int kmscon_pty_set_user(struct kmscon_pty *pty, uid_t uid);
 bool kmscon_pty_can_exec(struct kmscon_pty *pty);
 
@@ -70,6 +70,7 @@ void kmscon_pty_close(struct kmscon_pty *pty);
 
 int kmscon_pty_write(struct kmscon_pty *pty, const char *u8, size_t len);
 void kmscon_pty_signal(struct kmscon_pty *pty, int signum);
+void kmscon_pty_kill(struct kmscon_pty *pty, int signum);
 void kmscon_pty_resize(struct kmscon_pty *pty, unsigned short width, unsigned short height);
 
 int kmscon_pty_get_slave_name(struct kmscon_pty *pty, char *buf, size_t len);

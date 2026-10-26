@@ -54,6 +54,7 @@ struct conf_ctx *kmscon_seat_get_conf(struct kmscon_seat *seat);
 int kmscon_session_set_foreground(struct kmscon_session *sess);
 int kmscon_session_set_background(struct kmscon_session *sess);
 bool kmscon_session_get_foreground(struct kmscon_session *sess);
+void kmscon_session_unlock_request(struct kmscon_session *sess);
 
 void kmscon_session_bell(struct kmscon_session *sess);
 void kmscon_session_set_leds(struct kmscon_session *sess, unsigned int scroll_lock,

@@ -58,6 +58,9 @@ struct kmscon_session {
 
 	struct ev_timer *timer;
 	struct kmscon_terminal *term;
+
+	/* While locked, the lock terminal is shown instead of term */
+	struct kmscon_terminal *lock_term;
 };
 
 struct kmscon_display {
@@ -120,6 +123,13 @@ static void kmscon_seat_poll_video(void *data);
 static void seat_dpms_reset_timer(struct kmscon_seat *seat);
 static struct kmscon_session *kmscon_seat_new_session(struct kmscon_seat *seat);
 static void kmscon_session_unregister(struct kmscon_session *sess);
+static void session_unlock_idle(struct ev_eloop *eloop, void *unused, void *data);
+
+/* The terminal that is shown for this session */
+static struct kmscon_terminal *session_term(struct kmscon_session *sess)
+{
+	return sess->lock_term ? sess->lock_term : sess->term;
+}
 
 static void activate_display(struct kmscon_display *d)
 {
@@ -149,9 +159,11 @@ static void activate_display(struct kmscon_display *d)
 		dlist_for_each_entry_safe(s, tmp, &seat->sessions, list)
 		{
 			terminal_add_display(s->term, d->disp);
+			if (s->lock_term)
+				terminal_add_display(s->lock_term, d->disp);
 		}
 		if (seat->current_sess)
-			terminal_activate(seat->current_sess->term);
+			terminal_activate(session_term(seat->current_sess));
 	}
 }
 
@@ -247,14 +259,14 @@ static void seat_switch(struct kmscon_seat *seat, struct kmscon_session *new)
 	log_debug("switch session from %p to %p on seat %s", seat->current_sess, new, seat->name);
 
 	if (seat->current_sess)
-		terminal_deactivate(seat->current_sess->term);
+		terminal_deactivate(session_term(seat->current_sess));
 	if (new) {
 		if (new->foreground && !seat->foreground) {
 			seat_go_foreground(seat);
 		} else if (!new->foreground && seat->foreground) {
 			seat_go_background(seat);
 		}
-		terminal_activate(new->term);
+		terminal_activate(session_term(new));
 	} else {
 		seat_go_background(seat);
 	}
@@ -340,6 +352,8 @@ static void _seat_remove_display(struct kmscon_seat *seat, struct kmscon_display
 		dlist_for_each_entry_safe(s, tmp, &seat->sessions, list)
 		{
 			terminal_rm_display(s->term, d->disp);
+			if (s->lock_term)
+				terminal_rm_display(s->lock_term, d->disp);
 		}
 	}
 	display_unref(d->disp);
@@ -369,7 +383,7 @@ static void seat_refresh_display(void *data, struct display *disp)
 		return;
 
 	if (d->activated && seat->current_sess)
-		terminal_refresh_displays(seat->current_sess->term);
+		terminal_refresh_displays(session_term(seat->current_sess));
 }
 
 static void seat_vt_activate(struct uterm_vt *vt, void *data)
@@ -383,7 +397,7 @@ static void seat_vt_activate(struct uterm_vt *vt, void *data)
 	if (seat_go_foreground(seat))
 		return;
 	if (seat->current_sess)
-		terminal_activate(seat->current_sess->term);
+		terminal_activate(session_term(seat->current_sess));
 }
 
 static int seat_vt_deactivate(struct uterm_vt *vt, bool force, void *data)
@@ -392,7 +406,7 @@ static int seat_vt_deactivate(struct uterm_vt *vt, bool force, void *data)
 	int ret;
 
 	if (seat->current_sess)
-		terminal_deactivate(seat->current_sess->term);
+		terminal_deactivate(session_term(seat->current_sess));
 
 	ret = seat_go_background(seat);
 	if (ret)
@@ -476,7 +490,7 @@ static void seat_dpms_timeout(struct ev_timer *timer, uint64_t num, void *data)
 				    display_name(d->disp), ret);
 	}
 	if (seat->current_sess)
-		terminal_deactivate(seat->current_sess->term);
+		terminal_deactivate(session_term(seat->current_sess));
 	seat->dpms_blanked = true;
 }
 
@@ -503,7 +517,7 @@ static void seat_dpms_reset_timer(struct kmscon_seat *seat)
 					    display_name(d->disp), ret);
 		}
 		if (seat->current_sess)
-			terminal_activate(seat->current_sess->term);
+			terminal_activate(session_term(seat->current_sess));
 		seat->dpms_blanked = false;
 	}
 
@@ -521,6 +535,124 @@ static void seat_pointer_event(struct input *input, struct input_pointer_event *
 	if (ev->event != POINTER_MOVED && ev->event != POINTER_BUTTON && ev->event != POINTER_WHEEL)
 		return;
 	seat_dpms_reset_timer(seat);
+}
+
+/*
+ * Session locking
+ * A locked session keeps its terminal in the background and shows a lock
+ * terminal instead, which runs lock-cmd as the session owner.
+ */
+
+/* Lock @sess for the user logged in on it */
+static int session_lock(struct kmscon_session *sess)
+{
+	struct kmscon_seat *seat = sess->seat;
+	struct kmscon_terminal *lock;
+	struct kmscon_display *d;
+	uid_t uid;
+	int ret;
+
+	if (sess->lock_term)
+		return 0;
+
+	if (!seat->conf->lock_argv) {
+		log_debug("lock-cmd is not set, not locking session %p", sess);
+		return -ENOENT;
+	}
+
+	/* The session handed the display to a GUI, which locks itself */
+	if (!sess->foreground) {
+		log_debug("session %p runs a GUI, not locking it", sess);
+		return -EBUSY;
+	}
+
+	ret = terminal_get_owner(sess->term, &uid);
+	if (ret) {
+		log_debug("nobody is logged in on session %p, not locking it", sess);
+		return ret;
+	}
+
+	ret = terminal_new_lock(&lock, sess, sess->term, uterm_vt_get_num(seat->vt), seat->conf_ctx,
+				seat->eloop, seat->input, seat->name, uid);
+	if (ret) {
+		/* Refusals were already logged with their reason */
+		if (ret != -EACCES && ret != -EPERM)
+			log_error("cannot create lock terminal for session %p: %d", sess, ret);
+		return ret;
+	}
+
+	dlist_for_each_entry(d, &seat->displays, list)
+	{
+		terminal_add_display(lock, d->disp);
+	}
+
+	sess->lock_term = lock;
+	if (terminal_is_active(sess->term)) {
+		terminal_deactivate(sess->term);
+		terminal_activate(lock);
+	}
+
+	log_info("locked session %p on seat %s for uid %u", sess, seat->name, uid);
+	return 0;
+}
+
+static void session_unlock(struct kmscon_session *sess)
+{
+	struct kmscon_terminal *lock = sess->lock_term;
+	bool active;
+
+	if (!lock)
+		return;
+
+	/* A pending unlock request must not unlock a later lock */
+	ev_eloop_unregister_idle_cb(sess->seat->eloop, session_unlock_idle, sess, EV_SINGLE);
+
+	sess->lock_term = NULL;
+	active = terminal_is_active(lock);
+	if (active)
+		terminal_deactivate(lock);
+	/* Destroy it first: it frees the displays' HW cursor */
+	terminal_destroy(lock);
+	if (active)
+		terminal_activate(sess->term);
+
+	log_info("unlocked session %p", sess);
+}
+
+static void session_unlock_idle(struct ev_eloop *eloop, void *unused, void *data)
+{
+	struct kmscon_session *sess = data;
+
+	session_unlock(sess);
+}
+
+/* Called from pty callbacks, so unlock from the main loop */
+void kmscon_session_unlock_request(struct kmscon_session *sess)
+{
+	int ret;
+
+	if (!sess || !sess->seat || !sess->lock_term)
+		return;
+
+	ret = ev_eloop_register_idle_cb(sess->seat->eloop, session_unlock_idle, sess,
+					EV_ONESHOT | EV_SINGLE);
+	if (ret)
+		log_error("cannot schedule unlock of session %p: %d", sess, ret);
+}
+
+/* Lock every session with a logged in user on this seat */
+static void seat_lock(struct kmscon_seat *seat)
+{
+	struct kmscon_session *s;
+	unsigned int num = 0;
+
+	dlist_for_each_entry(s, &seat->sessions, list)
+	{
+		if (!session_lock(s))
+			++num;
+	}
+
+	log_info("lock requested on seat %s, %u session(s) locked", seat->name, num);
 }
 
 static void seat_input_event(struct input *input, struct input_key_event *ev, void *data)
@@ -568,6 +700,14 @@ static void seat_input_event(struct input *input, struct input_key_event *ev, vo
 		s = kmscon_seat_new_session(seat);
 		if (s)
 			seat_switch(seat, s);
+		return;
+	}
+	if (seat->conf->grab_lock &&
+	    conf_grab_matches(seat->conf->grab_lock, ev->mods, ev->num_syms, ev->keysyms)) {
+		ev->handled = true;
+		if (!seat->conf->lock_argv)
+			return;
+		seat_lock(seat);
 		return;
 	}
 	if (seat->conf->grab_reboot &&
@@ -1133,7 +1273,7 @@ static void kmscon_session_unregister(struct kmscon_session *sess)
 	seat = sess->seat;
 
 	if (seat->current_sess == sess) {
-		terminal_deactivate(seat->current_sess->term);
+		terminal_deactivate(session_term(sess));
 		seat_next(seat);
 	}
 
@@ -1141,6 +1281,9 @@ static void kmscon_session_unregister(struct kmscon_session *sess)
 	--seat->session_count;
 	sess->seat = NULL;
 
+	ev_eloop_unregister_idle_cb(seat->eloop, session_unlock_idle, sess, EV_SINGLE);
+	if (sess->lock_term)
+		terminal_destroy(sess->lock_term);
 	terminal_destroy(sess->term);
 	free(sess);
 }
@@ -1170,7 +1313,7 @@ int kmscon_session_set_foreground(struct kmscon_session *sess)
 			return ret;
 
 		if (sess->term)
-			terminal_activate(sess->term);
+			terminal_activate(session_term(sess));
 	}
 
 	sess->foreground = true;
@@ -1186,6 +1329,12 @@ int kmscon_session_set_background(struct kmscon_session *sess)
 		return -EINVAL;
 	if (!sess->foreground)
 		return 0;
+
+	/* Don't let a GUI take the display from a locked session */
+	if (sess->lock_term) {
+		log_info("ignoring background request from locked session %p", sess);
+		return -EBUSY;
+	}
 
 	seat = sess->seat;
 	if (seat && seat->current_sess == sess && seat->foreground) {
